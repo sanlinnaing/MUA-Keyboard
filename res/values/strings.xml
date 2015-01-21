@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">Myanmar Unicode Area Keyboard</string>
+    <string name="my_ime">MUA Keyboard</string>
+    <string name="label_subtype_my_MM">မြန်မာ</string>
+    <string name="label_subtype_mon_MM">မန်</string>
+    <string name="label_subtype_shn_MM">လိၵ်ႈတႆး</string>
+    <string name="label_subtype_en_GB">English</string>
+    <string name="word_separators">\u0020\u200B.,;:!?\n()[]*&amp;@{}/&lt;&gt;_+=|&quot;၊။</string>
+    <string name="shan_consonants">ၵၶငၸသၺတထၼပၽၾမယရလဝႁဢ</string>
+    <string name="title_activity_imesetting">ဗေ ကီးဘုတ်</string>
+    <string name="settings_name">ဗေ ကီးဘုတ်</string>
+    <string name="language_selection_title">Input languages</string>
+    <string name="select_language">Select input languages</string>
+    <string name="prime_book_typeing_on_off_title">သင်ပုန်းကြီး စာရိုက်စနစ်</string>
+    <string name="prime_book_typeing_on_off_title_summ">Enable/Disable ThinBoneGyi Typing</string>
+    <string name="faq">Help!</string>
+    <string name="test_keyboard_title">Test Keyboard</string>
+    <string name="test_keyboard_summ">To preview your Keyboard</string>
+    <string name="go_to_ime_setting">Enable Keyboard</string>
+    <string name="go_to_ime_setting_summ">Click to go to Language and Input method setting.</string>
+    <string name="choose_keyboard_title">Choose Keyboard</string>
+    <string name="choose_keyboard_summ">Select MUA Keyboard</string>
+    <string name="my_greeting">မင်္ဂလာပါခင်ဗျာ။ ယူနီကုဒ် အစီအစဉ်အတိုင်း  ရိုက်နိုင်သော ကီးဘုတ်ဖြစ်ပါသည်။\nက+ြ+ေ + ာ +င+်+း = ကြောင်း\nမ + န + ္    + တ + ေ + လ + း = မန္တလေး\nမ + င + ်     + ္    + လ + ာ = မင်္ဂလာ\nသ + င + ်      + ္     + ဘ  + ေ + ာ = သင်္ဘော\nအ + ဓိ + ဋ + ္     + ဌ + ာ + န + ်      = အဓိဋ္ဌာန် \n\n လိုအပ်ချက်များ ရှိပါက \n www.facebook.com/groups/mmUnicode \n သို့ ဆက်သွယ်ပေးပါခင်ဗျာ။ ကျေးဇူးတင်ပါသည်။</string>
+    <string name="action_settings">Settings</string>
+    <string name="title_activity_setting">MUA Setting</string>
+    <string name="light_theme_title">Light Theme</string>
+    <string name="choose_theme_title">Choose Theme</string>
+    <string name="choose_theme_summ">Select a Keyboard Theme</string>
+    <string name="light_theme_summ">Enable/Disable Light Theme</string>
+    <string name="play_sound_title">Key Sound</string>
+    <string name="play_sound_summ">Enable/Disable sound when typing</string>
+    
+    
+
+</resources>

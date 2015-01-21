@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<input-method xmlns:android="http://schemas.android.com/apk/res/android"
+    android:settingsActivity="com.sanlin.mkeyboard.ImePreferences" >
+
+    <subtype
+        android:icon="@drawable/icon_en_gb"
+        android:imeSubtypeExtraValue="1"
+        android:imeSubtypeLocale="en_GB"
+        android:imeSubtypeMode="keyboard"
+        android:label="@string/label_subtype_en_GB" />
+    <subtype
+        android:icon="@drawable/my_mm"
+        android:imeSubtypeExtraValue="2"
+        android:imeSubtypeLocale="my_MM"
+        android:imeSubtypeMode="keyboard"
+        android:label="@string/label_subtype_my_MM" />
+    <subtype
+        android:icon="@drawable/icon_en_gb"
+        android:imeSubtypeExtraValue="3"
+        android:imeSubtypeLocale="shn_MM"
+        android:imeSubtypeMode="keyboard"
+        android:label="@string/label_subtype_shn_MM" />
+    <subtype
+        android:icon="@drawable/icon_en_gb"
+        android:imeSubtypeExtraValue="4"
+        android:imeSubtypeLocale="mon_MM"
+        android:imeSubtypeMode="keyboard"
+        android:label="@string/label_subtype_mon_MM" />
+
+</input-method>
