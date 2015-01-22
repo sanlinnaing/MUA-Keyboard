@@ -26,18 +26,9 @@ public class MyIME extends InputMethodService implements
 	private KeyboardView kv;
 	private InputMethodManager mInputMethodManager;
 	private boolean caps = false;
-	private BamarKeyboard myKeyboard;
 	private MyKeyboard enKeyboard;
-	private MyKeyboard shnKeyboard;
-	private MonKeyboard monKeyboard;
-	private MyKeyboard mon_shifted_Keyboard;
-	private MyKeyboard mon_symbol_Keyboard;
 	private MyKeyboard symKeyboard;
 	private MyKeyboard sym_shifted_Keyboard;
-	private MyKeyboard my_shifted_Keyboard;
-	private MyKeyboard shn_shifted_Keyboard;
-	private MyKeyboard my_symbol_Keyboard;
-	private MyKeyboard shn_symbol_Keyboard;
 	private MyKeyboard currentKeyboard;
 	private MyKeyboard emojiKeyboard;
 	SharedPreferences sharedPref;
@@ -59,39 +50,15 @@ public class MyIME extends InputMethodService implements
 
 	@Override
 	public void onInitializeInterface() {
-		// TODO Auto-generated method stub
-		myKeyboard = new BamarKeyboard(this, R.xml.my_qwerty);
-		shnKeyboard = new ShanKeyboard(this, R.xml.shn_qwerty);
+
 		enKeyboard = new MyKeyboard(this, R.xml.en_qwerty);
 		symKeyboard = new MyKeyboard(this, R.xml.en_symbol);
 		sym_shifted_Keyboard = new MyKeyboard(this, R.xml.en_shift_symbol);
-		my_shifted_Keyboard = new MyKeyboard(this, R.xml.my_shifted_qwerty);
-		shn_shifted_Keyboard = new ShanKeyboard(this, R.xml.shn_shifted_qwerty);
-		my_symbol_Keyboard = new MyKeyboard(this, R.xml.my_symbol);
-		shn_symbol_Keyboard = new ShanKeyboard(this, R.xml.shn_symbol);
-		monKeyboard = new MonKeyboard(this, R.xml.mon_qwerty);
-		mon_shifted_Keyboard = new MyKeyboard(this, R.xml.mon_shifted_qwerty);
-		mon_symbol_Keyboard = new MyKeyboard(this, R.xml.mon_symbol);
 		emojiKeyboard = new MyKeyboard(this, R.xml.emotion);
 		shifted = false;
 		symbol = false;
-		switch (Integer.valueOf((mInputMethodManager
-				.getCurrentInputMethodSubtype().getExtraValue()))) {
-		case 1:
-			currentKeyboard = enKeyboard;
-			break;
-		case 2:
-			currentKeyboard = myKeyboard;
-			break;
-		case 3:
-			currentKeyboard = shnKeyboard;
-			break;
-		case 4:
-			currentKeyboard = monKeyboard;
-			break;
-		default:
-			currentKeyboard = enKeyboard;
-		}
+		currentKeyboard = enKeyboard;
+		currentKeyboard = getKeyboard(getLocaleId());
 
 	}
 
@@ -118,7 +85,7 @@ public class MyIME extends InputMethodService implements
 			kv = (MyKeyboardView) getLayoutInflater().inflate(
 					R.layout.default_keyboard, null);
 		}
-		
+
 		kv.setKeyboard(currentKeyboard);
 		kv.setOnKeyboardActionListener(this);
 
@@ -152,11 +119,44 @@ public class MyIME extends InputMethodService implements
 			return enKeyboard;
 
 		case 2:
-			return myKeyboard;
+			return new BamarKeyboard(this, R.xml.my_qwerty);
 		case 3:
-			return shnKeyboard;
+			return new ShanKeyboard(this, R.xml.shn_qwerty);
 		case 4:
-			return monKeyboard;
+			return new MonKeyboard(this, R.xml.mon_qwerty);
+		}
+		return currentKeyboard;
+	}
+
+	private MyKeyboard getSymKeyboard(int subTypeId) {
+		switch (subTypeId) {
+		case 1:
+			return symKeyboard;
+
+		case 2:
+			return new BamarKeyboard(this, R.xml.my_symbol);
+		case 3:
+			return new ShanKeyboard(this, R.xml.shn_symbol);
+		case 4:
+			return new MonKeyboard(this, R.xml.mon_symbol);
+		}
+		return currentKeyboard;
+	}
+
+	private MyKeyboard getShiftedKeyboard(int subTypeId) {
+		switch (subTypeId) {
+		case 1:
+			kv.getKeyboard().setShifted(true);
+			caps = true;
+			kv.invalidateAllKeys();
+			return null;
+
+		case 2:
+			return new BamarKeyboard(this, R.xml.my_shifted_qwerty);
+		case 3:
+			return new ShanKeyboard(this, R.xml.shn_shifted_qwerty);
+		case 4:
+			return new MonKeyboard(this, R.xml.mon_shifted_qwerty);
 		}
 		return currentKeyboard;
 	}
@@ -216,20 +216,19 @@ public class MyIME extends InputMethodService implements
 			playClick(primaryCode);
 		switch (primaryCode) {
 		case 42264154:// shan vowel
-			ic.commitText(((ShanKeyboard) shnKeyboard).shanVowel1(), 1);
+			ic.commitText(((ShanKeyboard) currentKeyboard).shanVowel1(), 1);
 			unshiftByLocale();
 			break;
 		case 300001:
-			switch (Integer.valueOf((mInputMethodManager
-					.getCurrentInputMethodSubtype().getExtraValue()))) {
+			switch (getLocaleId()) {
 			case 2:
-				myKeyboard.handleMoneySym(ic);
+				((BamarKeyboard) currentKeyboard).handleMoneySym(ic);
 				break;
 			case 3:
-				((ShanKeyboard) shnKeyboard).handleShanMoneySym(ic);
+				((ShanKeyboard) currentKeyboard).handleShanMoneySym(ic);
 				break;
 			case 4:
-				((MonKeyboard) monKeyboard).handleMonMoneySym(ic);
+				((MonKeyboard) currentKeyboard).handleMonMoneySym(ic);
 				break;
 			}
 
@@ -241,23 +240,23 @@ public class MyIME extends InputMethodService implements
 			Log.d("onKey", "Myanmar/Shan Delete key code");
 			if (MyConfig.isPrimeBookOn()) {
 				Log.d("onKey", "Prime Book on");
-				switch (Integer.valueOf((mInputMethodManager
-						.getCurrentInputMethodSubtype().getExtraValue()))) {
+				switch (getLocaleId()) {
 				case 2:
-					myKeyboard.handleMyanmarDelete(ic);
+					((BamarKeyboard) currentKeyboard).handleMyanmarDelete(ic);
 					break;
 				case 3:
-					((ShanKeyboard) shnKeyboard).handleShanDelete(ic);
+					((ShanKeyboard) currentKeyboard).handleShanDelete(ic);
 					break;
 				case 4:
-					((MonKeyboard) monKeyboard).handleMonDelete(ic);
+					((MonKeyboard) currentKeyboard).handleMonDelete(ic);
 					break;
 
 				}
 				break;
 			}
-			// if Prime book function is OFF following case will do. "case Keyboard.KEYCODE_DELETE:"
-			// Don't Interrupt anything, here. ::::!!!!!! 
+			// if Prime book function is OFF following case will do.
+			// "case Keyboard.KEYCODE_DELETE:"
+			// Don't Interrupt anything, here. ::::!!!!!!
 		case Keyboard.KEYCODE_DELETE:
 			Log.d("onKey", "Delete key code");
 
@@ -298,20 +297,20 @@ public class MyIME extends InputMethodService implements
 			String cText = String.valueOf(code);
 			Log.d("handle shift", cText);
 
-			switch (Integer.valueOf((mInputMethodManager
-					.getCurrentInputMethodSubtype().getExtraValue()))) {
+			switch (getLocaleId()) {
 			case 2:
-				cText = myKeyboard.handelMyanmarInputText(primaryCode, ic);
+				cText = ((BamarKeyboard) currentKeyboard)
+						.handelMyanmarInputText(primaryCode, ic);
 				Log.d("onKey", "MyanmarHandle");
 				break;
 			case 3:
-				cText = ((ShanKeyboard) shnKeyboard).handleShanInputText(
+				cText = ((ShanKeyboard) currentKeyboard).handleShanInputText(
 						primaryCode, ic);
 				Log.d("onKey", "ShanHandle");
 				break;
 			case 4:
-				cText = ((MonKeyboard) monKeyboard).handleMonInput(primaryCode,
-						ic);
+				cText = ((MonKeyboard) currentKeyboard).handleMonInput(
+						primaryCode, ic);
 				break;
 
 			}
@@ -326,10 +325,11 @@ public class MyIME extends InputMethodService implements
 	public static void deleteHandle(InputConnection ic) {
 		CharSequence ch = ic.getTextBeforeCursor(1, 0);
 		if (ch.length() != 0) {
-			Log.d("Delete", "CharSequence length= " + ch.length()
-					+ ": char= " + ch.toString());
-			
-			if (Character.isLowSurrogate(ch.charAt(0))||Character.isHighSurrogate(ch.charAt(0))) {
+			Log.d("Delete", "CharSequence length= " + ch.length() + ": char= "
+					+ ch.toString());
+
+			if (Character.isLowSurrogate(ch.charAt(0))
+					|| Character.isHighSurrogate(ch.charAt(0))) {
 				ic.deleteSurroundingText(2, 0);
 			} else
 				ic.deleteSurroundingText(1, 0);
@@ -338,7 +338,11 @@ public class MyIME extends InputMethodService implements
 	}
 
 	public static boolean isEndofText(InputConnection ic) {
-		CharSequence charAfterCursor = ic.getTextAfterCursor(1, 0);// need to fix if getTextAfterCursor return null
+		CharSequence charAfterCursor = ic.getTextAfterCursor(1, 0);// need to
+																	// fix if
+																	// getTextAfterCursor
+																	// return
+																	// null
 		if (charAfterCursor.length() > 0)
 			return false;
 		else
@@ -346,44 +350,13 @@ public class MyIME extends InputMethodService implements
 	}
 
 	private void handleSymByLocale() {
-		switch (Integer.valueOf((mInputMethodManager
-				.getCurrentInputMethodSubtype().getExtraValue()))) {
-		case 1:
-			if (!symbol) {
-				kv.setKeyboard(symKeyboard);
-				symbol = true;
-			} else {
-				kv.setKeyboard(enKeyboard);
-				symbol = false;
-			}
-			break;
-		case 2:
-			if (!symbol) {
-				kv.setKeyboard(my_symbol_Keyboard);
-				symbol = true;
-			} else {
-				kv.setKeyboard(myKeyboard);
-				symbol = false;
-			}
-			break;
-		case 3:
-			if (!symbol) {
-				kv.setKeyboard(shn_symbol_Keyboard);
-				symbol = true;
-			} else {
-				kv.setKeyboard(shnKeyboard);
-				symbol = false;
-			}
-			break;
-		case 4:
-			if (!symbol) {
-				kv.setKeyboard(mon_symbol_Keyboard);
-				symbol = true;
-			} else {
-				kv.setKeyboard(monKeyboard);
-				symbol = false;
-			}
-			break;
+		int localeId = getLocaleId();
+		if (!symbol) {
+			kv.setKeyboard(getSymKeyboard(localeId));
+			symbol = true;
+		} else {
+			kv.setKeyboard(getKeyboard(localeId));
+			symbol = false;
 		}
 	}
 
@@ -404,25 +377,9 @@ public class MyIME extends InputMethodService implements
 			kv.getKeyboard().setShifted(true);
 
 		} else {
-			switch (Integer.valueOf((mInputMethodManager
-					.getCurrentInputMethodSubtype().getExtraValue()))) {
-			case 1:
+			if (getShiftedKeyboard(getLocaleId()) != null) {
+				kv.setKeyboard(getShiftedKeyboard(getLocaleId()));
 				kv.getKeyboard().setShifted(true);
-				caps = true;
-				kv.invalidateAllKeys();
-				break;
-			case 2:
-				kv.setKeyboard(my_shifted_Keyboard);
-				kv.getKeyboard().setShifted(true);
-				break;
-			case 3:
-				kv.setKeyboard(shn_shifted_Keyboard);
-				kv.getKeyboard().setShifted(true);
-				break;
-			case 4:
-				kv.setKeyboard(mon_shifted_Keyboard);
-				kv.getKeyboard().setShifted(true);
-				break;
 			}
 		}
 		shifted = true;
@@ -434,28 +391,31 @@ public class MyIME extends InputMethodService implements
 			kv.getKeyboard().setShifted(false);
 
 		} else {
-			switch (Integer.valueOf((mInputMethodManager
-					.getCurrentInputMethodSubtype().getExtraValue()))) {
-			case 1:
-				kv.getKeyboard().setShifted(false);
-				caps = false;
+			kv.setKeyboard(getKeyboard(getLocaleId()));
+			kv.getKeyboard().setShifted(false);
+			caps = false;
+			if (getLocaleId() == 1)
 				kv.invalidateAllKeys();
-				break;
-			case 2:
-				kv.setKeyboard(myKeyboard);
-				kv.getKeyboard().setShifted(false);
-				break;
-			case 3:
-				kv.setKeyboard(shnKeyboard);
-				kv.getKeyboard().setShifted(false);
-				break;
-			case 4:
-				kv.setKeyboard(monKeyboard);
-				kv.getKeyboard().setShifted(false);
-				break;
-			}
+			
 		}
 		shifted = false;
+	}
+
+	/**
+	 * Some Android Phone have return ExtraValue from previous phone. So try to
+	 * fix it as default en_ locale as Return by default 1 as a en_ locale
+	 * otherwise return ExtraValue as defined in /xml/method.xml
+	 * fixed on version 1.3
+	 */
+	private Integer getLocaleId() {
+		int localeId = 1;
+		try {
+			localeId = Integer.valueOf((mInputMethodManager
+					.getCurrentInputMethodSubtype().getExtraValue()));
+		} catch (NumberFormatException ex) {
+			localeId = 1;
+		}
+		return localeId;
 	}
 
 	public static boolean isWordSeparator(int code) {
