@@ -72,6 +72,7 @@ public class MyIME extends InputMethodService implements
 				"prime_book_typing_on_off", true));
 		MyConfig.setCurrentTheme(Integer.valueOf(sharedPref.getString(
 				"choose_theme", "1")));
+		MyConfig.setShowHintLabel(sharedPref.getBoolean("hint_keylabel",true));
 		switch (MyConfig.getCurrentTheme()) {
 		case 3:
 			kv = (MyKeyboardView) getLayoutInflater().inflate(
@@ -124,6 +125,10 @@ public class MyIME extends InputMethodService implements
 			return new ShanKeyboard(this, R.xml.shn_qwerty);
 		case 4:
 			return new MonKeyboard(this, R.xml.mon_qwerty);
+		case 5:
+			return new MyKeyboard(this,R.xml.sg_karen_qwerty);
+		case 6:
+			return new MyKeyboard(this,R.xml.wp_karen_qwerty);
 		}
 		return currentKeyboard;
 	}
@@ -139,6 +144,10 @@ public class MyIME extends InputMethodService implements
 			return new ShanKeyboard(this, R.xml.shn_symbol);
 		case 4:
 			return new MonKeyboard(this, R.xml.mon_symbol);
+		case 5:
+			return new MyKeyboard(this,R.xml.sg_karen_symbol);
+		case 6:
+			return new MyKeyboard(this,R.xml.wp_karen_symbol);
 		}
 		return currentKeyboard;
 	}
@@ -157,6 +166,10 @@ public class MyIME extends InputMethodService implements
 			return new ShanKeyboard(this, R.xml.shn_shifted_qwerty);
 		case 4:
 			return new MonKeyboard(this, R.xml.mon_shifted_qwerty);
+		case 5:
+			return new MyKeyboard(this,R.xml.sg_karen_shifted_qwerty);
+		case 6:
+			return new MyKeyboard(this,R.xml.wp_karen_shifted_qwerty);
 		}
 		return currentKeyboard;
 	}
@@ -250,7 +263,8 @@ public class MyIME extends InputMethodService implements
 				case 4:
 					((MonKeyboard) currentKeyboard).handleMonDelete(ic);
 					break;
-
+				default:
+					deleteHandle(ic);
 				}
 				break;
 			}
@@ -324,7 +338,7 @@ public class MyIME extends InputMethodService implements
 
 	public static void deleteHandle(InputConnection ic) {
 		CharSequence ch = ic.getTextBeforeCursor(1, 0);
-		if (ch.length() != 0) {
+		if (ch.length() > 0) {
 			Log.d("Delete", "CharSequence length= " + ch.length() + ": char= "
 					+ ch.toString());
 

@@ -27,6 +27,11 @@
         android:key="play_sound"
         android:summary="@string/play_sound_summ"
         android:title="@string/play_sound_title" />
+    <CheckBoxPreference
+        android:defaultValue="true"
+        android:key="hint_keylabel"
+        android:summary="@string/hint_keylabel_summ"
+        android:title="@string/hint_keylabel_title" />
 
     <EditTextPreference
         android:key="test_keyboard_text"

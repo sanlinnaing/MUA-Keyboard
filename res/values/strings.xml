@@ -6,6 +6,8 @@
     <string name="label_subtype_my_MM">မြန်မာ</string>
     <string name="label_subtype_mon_MM">မန်</string>
     <string name="label_subtype_shn_MM">လိၵ်ႈတႆး</string>
+    <string name="label_subtype_krn_MM">စှီၤ</string>
+    <string name="label_subtype_wpkrn_MM">ဖျိၩ့</string>
     <string name="label_subtype_en_GB">English</string>
     <string name="word_separators">\u0020\u200B.,;:!?\n()[]*&amp;@{}/&lt;&gt;_+=|&quot;၊။</string>
     <string name="shan_consonants">ၵၶငၸသၺတထၼပၽၾမယရလဝႁဢ</string>
@@ -31,6 +33,8 @@
     <string name="light_theme_summ">Enable/Disable Light Theme</string>
     <string name="play_sound_title">Key Sound</string>
     <string name="play_sound_summ">Enable/Disable sound when typing</string>
+    <string name="hint_keylabel_title">Hint Key Label</string>
+    <string name="hint_keylabel_summ">Show/Hide Double Tap and Pop up hint key label</string>
     
     
 

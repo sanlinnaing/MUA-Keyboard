@@ -193,7 +193,7 @@ public class BamarKeyboard extends MyKeyboard {
 		int i = 1;
 		CharSequence getText = ic.getTextBeforeCursor(1, 0);
 		// null error fixed on issue of version 1.1
-		if (getText == null) {
+		if ((getText == null)||(getText.length()<=0)) {
 			return;// fixed on issue of version 1.2, cause=(getText is null) solution=(if getText is null, return)
 		}
 		// for Emotion delete
@@ -205,7 +205,7 @@ public class BamarKeyboard extends MyKeyboard {
 		Integer current;
 		int beforeLength = 0;
 		int currentLength = 1;
-		if (getText.length() > 0) {
+		
 			current = Integer.valueOf(getText.charAt(0));
 			Log.d("handleDelete", String.valueOf(current.intValue()));
 			while (!(isConsonant(current) || MyIME.isWordSeparator(current))// or
@@ -229,8 +229,7 @@ public class BamarKeyboard extends MyKeyboard {
 					ic.deleteSurroundingText(i, 0);
 				}
 			}
-		} else
-			ic.deleteSurroundingText(1, 0);
+		
 		swapConsonant = false;
 		medialCount = 0;
 		swapMedial = false;
@@ -302,7 +301,7 @@ public class BamarKeyboard extends MyKeyboard {
 				secPrev = Integer.valueOf(getText.charAt(0));
 				if (secPrev == E_VOWEL)
 					swapConsonant = true;
-				//ic.deleteSurroundingText(1, 0);
+				
 				MyIME.deleteHandle(ic);
 			}
 		} else {
