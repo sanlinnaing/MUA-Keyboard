@@ -19,17 +19,17 @@
 -->
 
 <Keyboard xmlns:android="http://schemas.android.com/apk/res/android"
-    android:keyWidth="12%p"
-    android:horizontalGap="@dimen/h_key_gap"
-    android:verticalGap="@dimen/v_key_gap"
+    android:keyWidth="@fraction/sym_b_key_width"
+    android:horizontalGap="@fraction/h_key_gap"
+    android:verticalGap="@fraction/v_key_gap"
     android:keyHeight="@dimen/key_height"
     >
     <Row>
         <Key android:codes="163" android:keyLabel="£" android:keyEdgeFlags="left"/>
-        <Key android:codes="126" android:keyLabel="~" android:keyWidth="10%p"/>
-        <Key android:codes="177" android:keyLabel="±" android:keyWidth="10%p"/>
-        <Key android:codes="8226" android:keyLabel="•" android:keyWidth="10%p"/>
-        <Key android:codes="176" android:keyLabel="°" android:keyWidth="10%p"/>
+        <Key android:codes="126" android:keyLabel="~" android:keyWidth="@fraction/sym_s_key_width"/>
+        <Key android:codes="177" android:keyLabel="±" android:keyWidth="@fraction/sym_s_key_width"/>
+        <Key android:codes="8226" android:keyLabel="•" android:keyWidth="@fraction/sym_s_key_width"/>
+        <Key android:codes="176" android:keyLabel="°" android:keyWidth="@fraction/sym_s_key_width"/>
         <Key android:codes="37" android:keyLabel="%"/>
         <Key android:codes="247" android:keyLabel="÷"/>
         <Key android:codes="215" android:keyLabel="×"/>
@@ -38,10 +38,10 @@
 
     <Row>
         <Key android:codes="8364" android:keyLabel="€" android:keyEdgeFlags="left"/>
-        <Key android:codes="96" android:keyLabel="`" android:keyWidth="10%p"/>
-        <Key android:codes="180" android:keyLabel="´" android:keyWidth="10%p"/>
-        <Key android:codes="169" android:keyLabel="©" android:keyWidth="10%p"/>
-        <Key android:codes="174" android:keyLabel="®" android:keyWidth="10%p"/>
+        <Key android:codes="96" android:keyLabel="`" android:keyWidth="@fraction/sym_s_key_width"/>
+        <Key android:codes="180" android:keyLabel="´" android:keyWidth="@fraction/sym_s_key_width"/>
+        <Key android:codes="169" android:keyLabel="©" android:keyWidth="@fraction/sym_s_key_width"/>
+        <Key android:codes="174" android:keyLabel="®" android:keyWidth="@fraction/sym_s_key_width"/>
         <Key android:codes="55" android:keyLabel="7"/>
         <Key android:codes="56" android:keyLabel="8"/>
         <Key android:codes="57" android:keyLabel="9"/>
@@ -50,10 +50,10 @@
     
     <Row>
         <Key android:codes="165" android:keyLabel="¥" android:keyEdgeFlags="left"/>
-		<Key android:codes="94" android:keyLabel="^" android:keyWidth="10%p"/>
-        <Key android:codes="124" android:keyLabel="|" android:keyWidth="10%p"/>
-        <Key android:codes="191" android:keyLabel="¿" android:keyWidth="10%p"/>
-        <Key android:codes="161" android:keyLabel="¡" android:keyWidth="10%p"/>
+		<Key android:codes="94" android:keyLabel="^" android:keyWidth="@fraction/sym_s_key_width"/>
+        <Key android:codes="124" android:keyLabel="|" android:keyWidth="@fraction/sym_s_key_width"/>
+        <Key android:codes="191" android:keyLabel="¿" android:keyWidth="@fraction/sym_s_key_width"/>
+        <Key android:codes="161" android:keyLabel="¡" android:keyWidth="@fraction/sym_s_key_width"/>
         <Key android:codes="52" android:keyLabel="4"/>
         <Key android:codes="53" android:keyLabel="5"/>
         <Key android:codes="54" android:keyLabel="6"/>
@@ -64,10 +64,10 @@
         <Key android:codes="-1" android:keyIcon="@drawable/sym_keyboard_shift"
                 android:isModifier="true"
                 android:keyEdgeFlags="left"/>
-        <Key android:codes="58" android:keyLabel=":" android:keyWidth="10%p"/>/>
-        <Key android:codes="59" android:keyLabel=";" android:keyWidth="10%p"/>
-        <Key android:codes="42" android:keyLabel="*" android:keyWidth="10%p"/>
-        <Key android:codes="47" android:keyLabel="/" android:keyWidth="10%p"/>
+        <Key android:codes="58" android:keyLabel=":" android:keyWidth="@fraction/sym_s_key_width"/>
+        <Key android:codes="59" android:keyLabel=";" android:keyWidth="@fraction/sym_s_key_width"/>
+        <Key android:codes="42" android:keyLabel="*" android:keyWidth="@fraction/sym_s_key_width"/>
+        <Key android:codes="47" android:keyLabel="/" android:keyWidth="@fraction/sym_s_key_width"/>
         <Key android:codes="49" android:keyLabel="1"/>
         <Key android:codes="50" android:keyLabel="2"/>
         <Key android:codes="51" android:keyLabel="3"/>
@@ -77,7 +77,7 @@
     <Row android:rowEdgeFlags="bottom">
         <Key android:codes="-2" android:keyLabel="aA" android:keyEdgeFlags="left" android:isModifier="true"/>
         <Key android:codes="32" android:keyIcon="@drawable/sym_keyboard_space"
-                android:keyWidth="40%p" android:isRepeatable="true" android:isModifier="true"/>
+                android:keyWidth="39%p" android:isRepeatable="true" android:isModifier="true"/>
         <Key android:codes="44" android:keyLabel=","/>
         <Key android:codes="48" android:keyLabel="0"/>
         <Key android:codes="46" android:keyLabel="."/>

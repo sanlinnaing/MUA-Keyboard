@@ -38,5 +38,11 @@
         android:imeSubtypeLocale="wpkrn_MM"
         android:imeSubtypeMode="keyboard"
         android:label="@string/label_subtype_wpkrn_MM" />
+    <subtype
+        android:icon="@drawable/icon_en_gb"
+        android:imeSubtypeExtraValue="7"
+        android:imeSubtypeLocale="epkrn_MM"
+        android:imeSubtypeMode="keyboard"
+        android:label="@string/label_subtype_epkrn_MM" />
 
 </input-method>

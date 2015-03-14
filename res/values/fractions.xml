@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-     <fraction name="h_key_gap">1%p</fraction>
-     <fraction name="v_key_gap">1%p</fraction>
-     <fraction name="key_width">9%p</fraction>
+     <fraction name="h_key_gap">0.9%p</fraction>
+     <fraction name="v_key_gap">0.5%p</fraction>
+     <fraction name="key_width">9.025%p</fraction>
+     <fraction name="sym_b_key_width">11%p</fraction>
+     <fraction name="sym_s_key_width">9.1%p</fraction>
 </resources>

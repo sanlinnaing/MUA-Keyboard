@@ -8,6 +8,7 @@
     <string name="label_subtype_shn_MM">လိၵ်ႈတႆး</string>
     <string name="label_subtype_krn_MM">စှီၤ</string>
     <string name="label_subtype_wpkrn_MM">ဖျိၩ့</string>
+    <string name="label_subtype_epkrn_MM">ဖၠုံ</string>
     <string name="label_subtype_en_GB">English</string>
     <string name="word_separators">\u0020\u200B.,;:!?\n()[]*&amp;@{}/&lt;&gt;_+=|&quot;၊။</string>
     <string name="shan_consonants">ၵၶငၸသၺတထၼပၽၾမယရလဝႁဢ</string>

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Keyboard xmlns:android="http://schemas.android.com/apk/res/android"
-    android:keyWidth="10%p"
-    android:horizontalGap="@dimen/h_key_gap"
-    android:verticalGap="@dimen/v_key_gap"
+    android:keyWidth="@fraction/key_width"
+    android:horizontalGap="@fraction/h_key_gap"
+    android:verticalGap="@fraction/v_key_gap"
     android:keyHeight="@dimen/key_height"
     >
     <Row>
@@ -47,7 +47,7 @@
     <Row>
         
         <Key android:codes="-1" android:keyIcon="@drawable/sym_keyboard_shift"
-                android:keyWidth="15%p" android:isModifier="true"
+                android:keyWidth="14%p" android:isModifier="true"
                 android:keyEdgeFlags="left"/>
         <Key android:codes="4103" android:keyLabel="ဇ"/>
         <Key android:codes="4108" android:keyLabel="ဌ"/>
@@ -58,25 +58,25 @@
         <Key android:codes="4188" android:keyLabel="ၜ"/>
        <!--  <Key android:codes="4170" android:keyLabel="၊"/> -->
         <Key android:codes="300000" android:keyIcon="@drawable/sym_keyboard_delete" 
-                android:keyWidth="15%p" android:isRepeatable="true" android:keyEdgeFlags="right" android:isModifier="true"/>
+                android:keyWidth="14%p" android:isRepeatable="true" android:keyEdgeFlags="right" android:isModifier="true"/>
     </Row>
     
     <Row android:rowEdgeFlags="bottom">
        <!--  <Key android:codes="-3" android:keyIcon="@drawable/sym_keyboard_done" 
                 android:keyWidth="15%p" android:keyEdgeFlags="left"/> -->
-        <Key android:codes="-2" android:keyLabel="၁၂၃" android:keyWidth="12%p" android:keyEdgeFlags="left" android:isModifier="true"/>
+        <Key android:codes="-2" android:keyLabel="၁၂၃" android:keyWidth="11%p" android:keyEdgeFlags="left" android:isModifier="true"/>
         <!--
             android:codes: -101 is not a framework-defined key code but a key code that is
             privately defined in com.example.android.softkeyboard.LatinKeyboardView.
         -->
         <Key android:codes="-101" android:keyIcon="@drawable/sym_keyboard_language_switch"
-                android:keyWidth="12%p" android:isModifier="true"/>
+                android:keyWidth="11%p" android:isModifier="true"/>
         <Key android:codes="32" android:keyIcon="@drawable/sym_keyboard_space"
-                android:keyWidth="45%p" android:isRepeatable="true" android:isModifier="true"/>
+                android:keyWidth="43.9%p" android:isRepeatable="true" android:isModifier="true"/>
         <Key android:codes="4171,4170" android:keyLabel="၊  ။"
                 android:keyWidth="11%p" android:isModifier="true"/>
         <Key android:codes="-4" android:keyIcon="@drawable/sym_keyboard_return" 
-                android:keyWidth="20%p" android:keyEdgeFlags="right" android:isModifier="true"/>
+                android:keyWidth="18%p" android:keyEdgeFlags="right" android:isModifier="true"/>
     </Row>
 </Keyboard>
     

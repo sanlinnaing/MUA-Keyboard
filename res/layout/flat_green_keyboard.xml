@@ -6,6 +6,6 @@
     android:layout_height="match_parent"
     android:layout_alignParentBottom="true"
     android:keyPreviewLayout ="@layout/preview"
-    android:keyBackground="@drawable/samplekeybackground2"
+    android:keyBackground="@drawable/flat_green_background"
     android:background="#2E8A5C"
 />

@@ -72,8 +72,16 @@ public class MyIME extends InputMethodService implements
 				"prime_book_typing_on_off", true));
 		MyConfig.setCurrentTheme(Integer.valueOf(sharedPref.getString(
 				"choose_theme", "1")));
-		MyConfig.setShowHintLabel(sharedPref.getBoolean("hint_keylabel",true));
+		MyConfig.setShowHintLabel(sharedPref.getBoolean("hint_keylabel", true));
 		switch (MyConfig.getCurrentTheme()) {
+		case 5:
+			kv = (MyKeyboardView) getLayoutInflater().inflate(
+					R.layout.gold_keyboard, null);
+			break;
+		case 4:
+			kv = (MyKeyboardView) getLayoutInflater().inflate(
+					R.layout.blue_gray_keyboard, null);
+			break;
 		case 3:
 			kv = (MyKeyboardView) getLayoutInflater().inflate(
 					R.layout.flat_green_keyboard, null);
@@ -126,9 +134,11 @@ public class MyIME extends InputMethodService implements
 		case 4:
 			return new MonKeyboard(this, R.xml.mon_qwerty);
 		case 5:
-			return new MyKeyboard(this,R.xml.sg_karen_qwerty);
+			return new MyKeyboard(this, R.xml.sg_karen_qwerty);
 		case 6:
-			return new MyKeyboard(this,R.xml.wp_karen_qwerty);
+			return new MyKeyboard(this, R.xml.wp_karen_qwerty);
+		case 7:
+			return new EastPwoKarenKeyboard(this, R.xml.ep_karen_qwerty);
 		}
 		return currentKeyboard;
 	}
@@ -145,9 +155,11 @@ public class MyIME extends InputMethodService implements
 		case 4:
 			return new MonKeyboard(this, R.xml.mon_symbol);
 		case 5:
-			return new MyKeyboard(this,R.xml.sg_karen_symbol);
+			return new MyKeyboard(this, R.xml.sg_karen_symbol);
 		case 6:
-			return new MyKeyboard(this,R.xml.wp_karen_symbol);
+			return new MyKeyboard(this, R.xml.wp_karen_symbol);
+		case 7:
+			return new EastPwoKarenKeyboard(this, R.xml.ep_karen_symbol);
 		}
 		return currentKeyboard;
 	}
@@ -167,9 +179,11 @@ public class MyIME extends InputMethodService implements
 		case 4:
 			return new MonKeyboard(this, R.xml.mon_shifted_qwerty);
 		case 5:
-			return new MyKeyboard(this,R.xml.sg_karen_shifted_qwerty);
+			return new MyKeyboard(this, R.xml.sg_karen_shifted_qwerty);
 		case 6:
-			return new MyKeyboard(this,R.xml.wp_karen_shifted_qwerty);
+			return new MyKeyboard(this, R.xml.wp_karen_shifted_qwerty);
+		case 7:
+			return new EastPwoKarenKeyboard(this, R.xml.ep_karen_shifted_qwerty);
 		}
 		return currentKeyboard;
 	}
@@ -263,6 +277,10 @@ public class MyIME extends InputMethodService implements
 				case 4:
 					((MonKeyboard) currentKeyboard).handleMonDelete(ic);
 					break;
+				case 7:
+					((EastPwoKarenKeyboard) currentKeyboard)
+							.handleEastPwoKarenDelete(ic);
+					break;
 				default:
 					deleteHandle(ic);
 				}
@@ -326,7 +344,9 @@ public class MyIME extends InputMethodService implements
 				cText = ((MonKeyboard) currentKeyboard).handleMonInput(
 						primaryCode, ic);
 				break;
-
+			case 7:
+				cText = ((EastPwoKarenKeyboard) currentKeyboard)
+						.handleEastPwoKarenInput(primaryCode, ic);
 			}
 
 			ic.commitText(cText, 1);
@@ -352,11 +372,9 @@ public class MyIME extends InputMethodService implements
 	}
 
 	public static boolean isEndofText(InputConnection ic) {
-		CharSequence charAfterCursor = ic.getTextAfterCursor(1, 0);// need to
-																	// fix if
-																	// getTextAfterCursor
-																	// return
-																	// null
+		CharSequence charAfterCursor = ic.getTextAfterCursor(1, 0);
+		if(charAfterCursor==null)
+			return true;
 		if (charAfterCursor.length() > 0)
 			return false;
 		else
@@ -410,7 +428,7 @@ public class MyIME extends InputMethodService implements
 			caps = false;
 			if (getLocaleId() == 1)
 				kv.invalidateAllKeys();
-			
+
 		}
 		shifted = false;
 	}
@@ -418,8 +436,8 @@ public class MyIME extends InputMethodService implements
 	/**
 	 * Some Android Phone have return ExtraValue from previous phone. So try to
 	 * fix it as default en_ locale as Return by default 1 as a en_ locale
-	 * otherwise return ExtraValue as defined in /xml/method.xml
-	 * fixed on version 1.3
+	 * otherwise return ExtraValue as defined in /xml/method.xml fixed on
+	 * version 1.3
 	 */
 	private Integer getLocaleId() {
 		int localeId = 1;

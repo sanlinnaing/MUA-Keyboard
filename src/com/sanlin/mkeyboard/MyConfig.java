@@ -5,6 +5,7 @@ public class MyConfig {
 	private static boolean primeBookOn;
 	private static int currentTheme;
 	private static boolean showHintLabel;
+	
 
 	public MyConfig(boolean soundOn, boolean primeBookOn) {
 		MyConfig.soundOn = soundOn;
@@ -42,4 +43,5 @@ public class MyConfig {
 	public static void setShowHintLabel(boolean showHintLabel) {
 		MyConfig.showHintLabel = showHintLabel;
 	}
+
 }

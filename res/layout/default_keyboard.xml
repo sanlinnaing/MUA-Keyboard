@@ -5,9 +5,11 @@
     android:layout_width="wrap_content"
     android:layout_height="match_parent"
     android:layout_alignParentBottom="true"
+   	
     android:keyPreviewLayout ="@layout/preview"
     android:keyBackground="@drawable/samplekeybackground"
-    android:background="#80000000"
+    android:background="#162916"
     
 />
-<!-- android.inputmethodservice.KeyboardView -->
+<!-- android.inputmethodservice.KeyboardView
+android:keyTextColor="#000000" -->
