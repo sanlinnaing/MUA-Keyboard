@@ -25,6 +25,17 @@ public class ShanKeyboard extends MyKeyboard {
 
 	public String handleShanInputText(int primaryCode, InputConnection ic) {
 		CharSequence charBeforeCursor = ic.getTextBeforeCursor(1, 0);
+		if ((primaryCode == MY_E || primaryCode == SH_E)
+				&& MyConfig.isPrimeBookOn()) {
+			String outText = String.valueOf((char) primaryCode);
+			// if (isConsonant(charcodeBeforeCursor)) {
+			char temp[] = { (char) 8203, (char) primaryCode }; // ZWSP added
+			outText = String.valueOf(temp);
+			// }
+			swapConsonant = false;
+			swapMedial = false;
+			return outText;
+		}
 		// if getTextBeforeCursor return null, issues on version 1.1
 		if (charBeforeCursor == null) {
 			charBeforeCursor = "";
@@ -81,16 +92,7 @@ public class ShanKeyboard extends MyKeyboard {
 			swapMedial = false;
 			return String.valueOf((char) primaryCode);
 		}
-		if ((primaryCode == MY_E || primaryCode == SH_E)) {
-			String outText = String.valueOf((char) primaryCode);
-			if (isConsonant(charcodeBeforeCursor)) {
-				char temp[] = { (char) 8203, (char) primaryCode }; // ZWSP added
-				outText = String.valueOf(temp);
-			}
-			swapConsonant = false;
-			swapMedial = false;
-			return outText;
-		}
+
 		if ((charcodeBeforeCursor == MY_E || charcodeBeforeCursor == SH_E)) {
 			Log.d("ShanHandle", "E vowel");
 			if (isConsonant(primaryCode)) {
@@ -147,19 +149,19 @@ public class ShanKeyboard extends MyKeyboard {
 
 	public void handleShanDelete(InputConnection ic) {
 		if (MyIME.isEndofText(ic)) {
-			singleDelete(ic);
+			handleSingleDelete(ic);
 		} else {
 			MyIME.deleteHandle(ic);
 		}
 	}
 
-	private void singleDelete(InputConnection ic) {
+	private void handleSingleDelete(InputConnection ic) {
 		CharSequence getText = ic.getTextBeforeCursor(1, 0);
 		// if getTextBeforeCursor return null, issues on version 1.1
 		if (getText == null) {
 			getText = "";
 		}
-		
+
 		Integer firstChar;
 		Integer secPrev;
 		if (getText.length() > 0) {
@@ -185,9 +187,17 @@ public class ShanKeyboard extends MyKeyboard {
 			} else {
 				getText = ic.getTextBeforeCursor(2, 0);
 				secPrev = Integer.valueOf(getText.charAt(0));
+				CharSequence getThirdText = ic.getTextBeforeCursor(3, 0);
+				int thirdChar = 0;
+				if (getThirdText != null && getThirdText.length() == 3)
+					thirdChar = getThirdText.charAt(0);
+
 				if (secPrev == MY_E || secPrev == SH_E)
-					swapConsonant = true;
-				//ic.deleteSurroundingText(1, 0);
+					if (thirdChar == 0x200b)
+						swapConsonant = false;
+					else
+						swapConsonant = true;
+				// ic.deleteSurroundingText(1, 0);
 				MyIME.deleteHandle(ic);
 			}
 		} else {
