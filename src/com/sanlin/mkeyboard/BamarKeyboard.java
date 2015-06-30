@@ -6,24 +6,13 @@ import android.view.inputmethod.InputConnection;
 
 public class BamarKeyboard extends MyKeyboard {
 
-	private int DOT_BELOW = 4151;
-	private int ASAT = 4154;
-	private int NYA = 4105;
-	private int UU = 4133;
-	private int II_VOWEL = 4142;
-	private int AA_VOWEL = 4140;
-	private int SS = 4101;
-	private int YA_MEDIAL = 4155;
-
 	private int stackPointer = 0;
 	private int[] stack = new int[3];
 
 	private boolean swapConsonant = false;
 	private short medialCount = 0;
 	private boolean swapMedial = false;
-	private int E_VOWEL = 4145;
-	private int VIRAMA = 4153;
-	private boolean EVOWEL_VIRAMA = false;
+	private boolean evowel_virama = false;
 	private int[] medialStack = new int[3];
 
 	public BamarKeyboard(Context context, int xmlLayoutResId) {
@@ -32,8 +21,19 @@ public class BamarKeyboard extends MyKeyboard {
 	}
 
 	public String handelMyanmarInputText(int primaryCode, InputConnection ic) {
-		// TODO Auto-generated method stub
-
+		// if e_vowel renew checking flag if
+		if (primaryCode == 0x1031 && MyConfig.isPrimeBookOn()) {
+			String outText = String.valueOf((char) primaryCode);
+			// if (isConsonant(charcodeBeforeCursor)) {
+			char temp[] = { (char) 8203, (char) primaryCode }; // ZWSP added
+			outText = String.valueOf(temp);
+			// }
+			swapConsonant = false;
+			medialCount = 0;
+			swapMedial = false;
+			evowel_virama = false;
+			return outText;
+		}
 		CharSequence charBeforeCursor = ic.getTextBeforeCursor(1, 0);
 		Integer charcodeBeforeCursor;
 		// if getTextBeforeCursor return null, issues on version 1.1
@@ -46,53 +46,52 @@ public class BamarKeyboard extends MyKeyboard {
 			swapConsonant = false;
 			medialCount = 0;
 			swapMedial = false;
-			EVOWEL_VIRAMA = false;
+			evowel_virama = false;
 			return String.valueOf((char) primaryCode);// else it is the first
 		} // character no need to
 			// reorder
 		// tha + ra_medial = aw vowel autocorrect
-		if ((charcodeBeforeCursor == 4126) && (primaryCode == 4156)) {
+		if ((charcodeBeforeCursor == 0X101e) && (primaryCode == 0x103c)) {
 			ic.deleteSurroundingText(1, 0);
-			return String.valueOf((char) 4137);
+			return String.valueOf((char) 0x1029);
 		}
 		// dot_above + au vowel = au vowel + dot_above autocorrect
-		if ((charcodeBeforeCursor == 4150) && (primaryCode == 4143)) {
-			char temp[] = { (char) 4143, (char) 4150 };
+		if ((charcodeBeforeCursor == 0x1036) && (primaryCode == 0x102f)) {
+			char temp[] = { (char) 0x102f, (char) 0x1036 };
 			ic.deleteSurroundingText(1, 0);
 			return String.valueOf(temp);
 		}
 		// ss + ya_medial = za myint zwe autocorrect
-		if ((charcodeBeforeCursor == SS) && (primaryCode == YA_MEDIAL)) {
+		if ((charcodeBeforeCursor == 0x1005) && (primaryCode == 0x103b)) {
 			ic.deleteSurroundingText(1, 0);
-			return String.valueOf((char) 4104);
+			return String.valueOf((char) 0x1008);
 		}
-		// uu + aa_vowel = NYA + aa_vowel autocorrect
-		if ((charcodeBeforeCursor == UU) && (primaryCode == AA_VOWEL)) {
-			char temp[] = { (char) NYA, (char) AA_VOWEL };
+		// uu + aa_vowel = 0x1009 + aa_vowel autocorrect
+		if ((charcodeBeforeCursor == 0x1025) && (primaryCode == 0x102c)) {
+			char temp[] = { (char) 0x1009, (char) 0x102c };
 			ic.deleteSurroundingText(1, 0);
 			return String.valueOf(temp);
 		}
 		// uu_vowel+ii_vowel = u autocorrect
-		if ((charcodeBeforeCursor == UU) && (primaryCode == II_VOWEL)) {
+		if ((charcodeBeforeCursor == 0x1025) && (primaryCode == 0x102e)) {
 
 			ic.deleteSurroundingText(1, 0);
 			return String.valueOf((char) 4134); // U
 		}
 		// uu_vowel+asat autocorrect
-		if ((charcodeBeforeCursor == UU) && (primaryCode == ASAT)) {
-			char temp[] = { (char) NYA, (char) ASAT };
+		if ((charcodeBeforeCursor == 0x1025) && (primaryCode == 0x103a)) {
+			char temp[] = { (char) 0x1009, (char) 0x103a };
 			ic.deleteSurroundingText(1, 0);
 			return String.valueOf(temp);
 		}
 		// asat + dot below to reorder dot below + asat
-		if ((charcodeBeforeCursor == ASAT) && (primaryCode == DOT_BELOW)) {
-			char temp[] = { (char) DOT_BELOW, (char) ASAT };
+		if ((charcodeBeforeCursor == 0x103a) && (primaryCode == 0x1037)) {
+			char temp[] = { (char) 0x1037, (char) 0x103a };
 			ic.deleteSurroundingText(1, 0);
 			return String.valueOf(temp);
 		}
 		// if PrimeBook Function is on
 		if (MyConfig.isPrimeBookOn()) {
-			Log.d("HandleMyanmarText", "Prime Book on");
 			return primeBookFunction(primaryCode, ic, charcodeBeforeCursor);
 		}
 
@@ -103,48 +102,34 @@ public class BamarKeyboard extends MyKeyboard {
 	private String primeBookFunction(int primaryCode, InputConnection ic,
 			Integer charcodeBeforeCursor) {
 		// E vowel + cons + virama + cons
-		if ((primaryCode == VIRAMA) & (swapConsonant)) {
+		if ((primaryCode == 0x1039) & (swapConsonant)) {
 			swapConsonant = false;
-			EVOWEL_VIRAMA = true;
+			evowel_virama = true;
 			return String.valueOf((char) primaryCode);
 		}
 
-		// if e_vowel renew checking flag if
-		if (primaryCode == E_VOWEL) {
-			String outText = String.valueOf((char) primaryCode);
-			if (isConsonant(charcodeBeforeCursor)) {
-				char temp[] = { (char) 8203, (char) primaryCode }; // ZWSP added
-				outText = String.valueOf(temp);
-			}
-			swapConsonant = false;
-			medialCount = 0;
-			swapMedial = false;
-			EVOWEL_VIRAMA = false;
-			return outText;
-		}
-
-		if (EVOWEL_VIRAMA) {
+		if (evowel_virama) {
 			if (isConsonant(primaryCode)) {
 				swapConsonant = true;
 				ic.deleteSurroundingText(2, 0);
-				char[] reorderChars = { (char) VIRAMA, (char) primaryCode,
-						(char) E_VOWEL };
+				char[] reorderChars = { (char) 0x1039, (char) primaryCode,
+						(char) 0x1031 };
 				String reorderString = String.valueOf(reorderChars);
-				EVOWEL_VIRAMA = false;
+				evowel_virama = false;
 				return reorderString;
 			} else {
-				EVOWEL_VIRAMA = false;
+				evowel_virama = false;
 			}
 		}
 		if (isOthers(primaryCode)) {
 			swapConsonant = false;
 			medialCount = 0;
 			swapMedial = false;
-			EVOWEL_VIRAMA = false;
+			evowel_virama = false;
 			return String.valueOf((char) primaryCode);
 		}
 		// if no previous E_vowel, no need to check Reorder.
-		if (charcodeBeforeCursor != E_VOWEL) {
+		if (charcodeBeforeCursor != 0x1031) {
 			return String.valueOf((char) primaryCode);
 		}
 		// if input character is consonant and consonant e_vowel swapped, no
@@ -182,10 +167,8 @@ public class BamarKeyboard extends MyKeyboard {
 	public void handleMyanmarDelete(InputConnection ic) {
 		if (MyIME.isEndofText(ic)) {
 			handleSingleDelete(ic);
-			Log.d("HandleMyanmarDelete", "it is end of text box");
 		} else {
 			handelMyanmarWordDelete(ic);
-			Log.d("HandleMyanmarDelete", "it is not the end of text");
 		}
 	}
 
@@ -208,7 +191,6 @@ public class BamarKeyboard extends MyKeyboard {
 		int currentLength = 1;
 
 		current = Integer.valueOf(getText.charAt(0));
-		Log.d("handleDelete", String.valueOf(current.intValue()));
 		while (!(isConsonant(current) || MyIME.isWordSeparator(current))// or
 																		// Word
 				// separator
@@ -226,7 +208,7 @@ public class BamarKeyboard extends MyKeyboard {
 			getText = ic.getTextBeforeCursor(i + 1, 0);
 			if (getText != null)
 				virama = getText.charAt(0);
-			if (virama == VIRAMA) {
+			if (virama == 0x1039) {
 				ic.deleteSurroundingText(i + 1, 0);
 			} else {
 				ic.deleteSurroundingText(i, 0);
@@ -239,7 +221,7 @@ public class BamarKeyboard extends MyKeyboard {
 
 	}
 
-	private void handleSingleDelete(InputConnection ic) {
+	public void handleSingleDelete(InputConnection ic) {
 
 		CharSequence getText = ic.getTextBeforeCursor(1, 0);
 		Integer firstChar;
@@ -250,13 +232,13 @@ public class BamarKeyboard extends MyKeyboard {
 		}
 		if (getText.length() > 0) {
 			firstChar = Integer.valueOf(getText.charAt(0));
-			if (firstChar == E_VOWEL) {
+			if (firstChar == 0x1031) {
 				// Need to initialize FLAG
 				swapConsonant = false;
 				swapMedial = false;
 				medialCount = 0;
 				stackPointer = 0;
-				// 2nd previous characher
+				// 2nd previous character
 				getText = ic.getTextBeforeCursor(2, 0);
 				secPrev = Integer.valueOf(getText.charAt(0));
 				if (isMedial(secPrev)) {
@@ -287,7 +269,7 @@ public class BamarKeyboard extends MyKeyboard {
 					int thirdChar = 0;
 					if (getThirdText.length() == 3)
 						thirdChar = getThirdText.charAt(0);
-					if (thirdChar == VIRAMA) {
+					if (thirdChar == 0x1039) {
 						deleteTwoCharBeforeEvowel(ic);
 					} else {
 						deleteCharBeforeEvowel(ic);
@@ -296,15 +278,26 @@ public class BamarKeyboard extends MyKeyboard {
 					swapMedial = false;
 					medialCount = 0;
 				} else {
-					ic.deleteSurroundingText(1, 0);
+					if (secPrev == 0x200b)
+						ic.deleteSurroundingText(2, 0);
+					else
+						ic.deleteSurroundingText(1, 0);
 				}
 			} else {
 				// If not E_Vowel
 				getText = ic.getTextBeforeCursor(2, 0);
 				secPrev = Integer.valueOf(getText.charAt(0));
-				if (secPrev == E_VOWEL)
-					swapConsonant = true;
+				CharSequence getThirdText = ic.getTextBeforeCursor(3, 0);
+				int thirdChar = 0;
+				if (getThirdText != null && getThirdText.length() == 3)
+					thirdChar = getThirdText.charAt(0);
 
+				if (secPrev == 0x1031) {
+					if (thirdChar == 0x200b)
+						swapConsonant = false;
+					else
+						swapConsonant = true;
+				}
 				MyIME.deleteHandle(ic);
 			}
 		} else {
@@ -312,23 +305,17 @@ public class BamarKeyboard extends MyKeyboard {
 			ic.deleteSurroundingText(1, 0);
 		}
 		stackPointer = 0;
-		// / Log output need to delete
-		String logText = "";
-		for (int k = 0; k < medialCount; k++) {
-			logText = logText + String.valueOf((char) medialStack[k]) + " | ";
-		}
-		Log.d("SingleDelete", "medialSTack" + logText);
 
 	}
 
 	private void deleteCharBeforeEvowel(InputConnection ic) {
 		ic.deleteSurroundingText(2, 0);
-		ic.commitText(String.valueOf((char) E_VOWEL), 1);
+		ic.commitText(String.valueOf((char) 0x1031), 1);
 	}
 
 	private void deleteTwoCharBeforeEvowel(InputConnection ic) {
 		ic.deleteSurroundingText(3, 0);
-		ic.commitText(String.valueOf((char) E_VOWEL), 1);
+		ic.commitText(String.valueOf((char) 0x1031), 1);
 	}
 
 	private boolean getFlagMedial(InputConnection ic) {
@@ -356,7 +343,6 @@ public class BamarKeyboard extends MyKeyboard {
 			current = Integer.valueOf(getText.charAt(0));
 
 		}
-		Log.d("getMedialFlag", "MedialCount = " + medialCount);
 		if (isConsonant(current)) {
 
 			return true;
@@ -390,7 +376,7 @@ public class BamarKeyboard extends MyKeyboard {
 
 	private String reorder_e_vowel(int primaryCode, InputConnection ic) {
 		ic.deleteSurroundingText(1, 0);
-		char[] reorderChars = { (char) primaryCode, (char) E_VOWEL };
+		char[] reorderChars = { (char) primaryCode, (char) 0x1031 };
 		String reorderString = String.valueOf(reorderChars);
 		return reorderString;
 	}
@@ -404,22 +390,22 @@ public class BamarKeyboard extends MyKeyboard {
 			return true;
 		else if (medialCount > 2)// only 3 times of medial;
 			return false;
-		else if (medialStack[medialCount - 1] == 4158)// if previous medial is
+		else if (medialStack[medialCount - 1] == 0x103e)// if previous medial is
 														// Ha medial, no other
 														// medial followed
 			return false;
-		else if ((medialStack[medialCount - 1] == 4157)
-				&& (primaryCode == 4158))
+		else if ((medialStack[medialCount - 1] == 0x103d)
+				&& (primaryCode != 0x103e))
 			// if previous medial is Wa medial, only Ha madial will followed, no
 			// other medial followed
-			return true;
-		else if (((medialStack[medialCount - 1] == 4155) && (primaryCode == 4156))
+			return false;
+		else if (((medialStack[medialCount - 1] == 0x103b) && (primaryCode == 0x103c))
 				// if previous medial Ya medial and then Ra medial followed
-				|| ((medialStack[medialCount - 1] == 4156) && (primaryCode == 4155))
+				|| ((medialStack[medialCount - 1] == 0x103c) && (primaryCode == 0x103b))
 				// if previous medial is Ra medial and then Ya medial followed
-				|| ((medialStack[medialCount - 1] == 4155) && (primaryCode == 4155))
+				|| ((medialStack[medialCount - 1] == 0x103b) && (primaryCode == 0x103b))
 				// if previous medial is Ya medial and then Ya medial followed
-				|| ((medialStack[medialCount - 1] == 4156) && (primaryCode == 4156)))
+				|| ((medialStack[medialCount - 1] == 0x103c) && (primaryCode == 0x103c)))
 			// if previous medial is Ra medial and then Ra medial followed
 			return false;
 		// if All condition is passed, medial is valid :D Bravo
@@ -428,10 +414,10 @@ public class BamarKeyboard extends MyKeyboard {
 
 	private boolean isOthers(int primaryCode) {
 		switch (primaryCode) {
-		case 4139:
-		case 4140:
-		case 4151:
-		case 4152:
+		case 0x102b:
+		case 0x102c:
+		case 0x1037:
+		case 0x1038:
 			return true;
 		}
 		return false;
@@ -439,8 +425,7 @@ public class BamarKeyboard extends MyKeyboard {
 
 	private boolean isConsonant(int primaryCode) {
 		// Is Consonant
-		if ((primaryCode > 4095) & (primaryCode < 4130)) {
-			Log.d("handleInputText", "It is a consonant");
+		if ((primaryCode > 4095) && (primaryCode < 4130)) {
 			return true;
 		} else
 			return false;
@@ -449,8 +434,7 @@ public class BamarKeyboard extends MyKeyboard {
 	private boolean isMedial(int primaryCode) {
 
 		// Is Medial?
-		if ((primaryCode > 4154) & (primaryCode < 4159)) {
-			Log.d("handleInputText", "It is a medial");
+		if ((primaryCode > 4154) && (primaryCode < 4159)) {
 			return true;
 		} else
 			return false;
