@@ -14,7 +14,7 @@
         <Key android:codes="4166" android:keyLabel="၆"/>
         <Key android:codes="4167" android:keyLabel="၇"/>
         <Key android:codes="4168" android:keyLabel="၈"/>
-        <Key android:codes="4169" android:keyLabel="၉"/>
+        <Key android:codes="4169,4239,43643" android:keyLabel="၉"   android:popupKeyboard="@xml/popup_keys" android:popupCharacters="ႏꩻႇႈ"/>
         <Key android:codes="4160" android:keyLabel="၀" android:keyEdgeFlags="right"/>
     </Row>
 
@@ -41,7 +41,7 @@
         <Key android:codes="4156" android:keyLabel="ြ"/>
         <Key android:codes="4143" android:keyLabel="ု"/>
         <Key android:codes="4144" android:keyLabel="ူ"/>
-        <Key android:codes="4152,4239,43643" android:keyLabel="း"  android:popupKeyboard="@xml/popup_keys" android:popupCharacters="ႈႇꩻႏ" android:keyEdgeFlags="right"/>
+        <Key android:codes="4152" android:keyLabel="း" android:keyEdgeFlags="right"/>
     </Row>
     
     <Row>
