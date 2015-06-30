@@ -7,13 +7,12 @@
         android:key="prime_book_typing_on_off"
         android:summary="@string/prime_book_typeing_on_off_title_summ"
         android:title="@string/prime_book_typeing_on_off_title" />
-    <!--
-         <CheckBoxPreference
+    <CheckBoxPreference
         android:defaultValue="false"
-        android:key="theme_select"
-        android:summary="@string/light_theme_summ"
-        android:title="@string/light_theme_title" />
-    -->
+        android:key="double_tap"
+        android:summary="@string/double_tap_summ"
+        android:title="@string/double_tap_title" />
+    
     <ListPreference
         android:defaultValue="1"
         android:entries="@array/themeNameArray"
