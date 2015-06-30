@@ -34,6 +34,8 @@
     <string name="light_theme_summ">Enable/Disable Light Theme</string>
     <string name="play_sound_title">Key Sound</string>
     <string name="play_sound_summ">Enable/Disable sound when typing</string>
+    <string name="double_tap_title">Double Tap ၂ ချက်နှိပ်စနစ်</string>
+    <string name="double_tap_summ">Enable/Disable Double-Tap typing</string>
     <string name="hint_keylabel_title">Hint Key Label</string>
     <string name="hint_keylabel_summ">Show/Hide Double Tap and Pop up hint key label</string>
     
