@@ -38,14 +38,12 @@ public class MyKeyboardView extends KeyboardView {
 			if (key.label != null) {
 				if (key.label.equals(";)")) {
 					key.label = new String(Character.toChars(key.codes[0]));
-					Log.d("onDraw", "Length= " + key.label.length()
-							+ " : CharSeq =" + key.label.toString());
 				}
 				if (MyConfig.isShowHintLabel()) {
 					if (key.popupCharacters != null) {
 						String popKeyLabel = "";
-						int xPos = key.x + key.width / 5;
-						if (key.popupCharacters.length() > 3) {
+						int xPos = key.x + key.width / 4;
+						if (key.popupCharacters.length() > 1) {
 							xPos = key.x + key.width / 2;
 							popKeyLabel = key.popupCharacters.subSequence(0, 2)
 									.toString();
