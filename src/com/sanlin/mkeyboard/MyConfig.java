@@ -5,6 +5,7 @@ public class MyConfig {
 	private static boolean primeBookOn;
 	private static int currentTheme;
 	private static boolean showHintLabel;
+	private static boolean isDoubleTap;
 	
 
 	public MyConfig(boolean soundOn, boolean primeBookOn) {
@@ -42,6 +43,14 @@ public class MyConfig {
 
 	public static void setShowHintLabel(boolean showHintLabel) {
 		MyConfig.showHintLabel = showHintLabel;
+	}
+
+	public static boolean isDoubleTap() {
+		return isDoubleTap;
+	}
+
+	public static void setDoubleTap(boolean isDoubleTap) {
+		MyConfig.isDoubleTap = isDoubleTap;
 	}
 
 }

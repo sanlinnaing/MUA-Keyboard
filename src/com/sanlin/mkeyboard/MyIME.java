@@ -50,7 +50,8 @@ public class MyIME extends InputMethodService implements
 
 	@Override
 	public void onInitializeInterface() {
-
+		sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+		MyConfig.setDoubleTap(sharedPref.getBoolean("double_tap", false));
 		enKeyboard = new MyKeyboard(this, R.xml.en_qwerty);
 		symKeyboard = new MyKeyboard(this, R.xml.en_symbol);
 		sym_shifted_Keyboard = new MyKeyboard(this, R.xml.en_shift_symbol);
@@ -65,7 +66,7 @@ public class MyIME extends InputMethodService implements
 	@Override
 	public View onCreateInputView() {
 		// TODO Auto-generated method stub
-		sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+
 		// get setting
 		MyConfig.setSoundOn(sharedPref.getBoolean("play_sound", false));
 		MyConfig.setPrimeBookOn(sharedPref.getBoolean(
@@ -73,6 +74,7 @@ public class MyIME extends InputMethodService implements
 		MyConfig.setCurrentTheme(Integer.valueOf(sharedPref.getString(
 				"choose_theme", "1")));
 		MyConfig.setShowHintLabel(sharedPref.getBoolean("hint_keylabel", true));
+		MyConfig.setDoubleTap(sharedPref.getBoolean("double_tap", false));
 		switch (MyConfig.getCurrentTheme()) {
 		case 5:
 			kv = (MyKeyboardView) getLayoutInflater().inflate(
@@ -128,7 +130,10 @@ public class MyIME extends InputMethodService implements
 			return enKeyboard;
 
 		case 2:
-			return new BamarKeyboard(this, R.xml.my_qwerty);
+			if (MyConfig.isDoubleTap())
+				return new BamarKeyboard(this, R.xml.my_2_qwerty);
+			else
+				return new BamarKeyboard(this, R.xml.my_qwerty);
 		case 3:
 			return new ShanKeyboard(this, R.xml.shn_qwerty);
 		case 4:
@@ -290,9 +295,16 @@ public class MyIME extends InputMethodService implements
 			// "case Keyboard.KEYCODE_DELETE:"
 			// Don't Interrupt anything, here. ::::!!!!!!
 		case Keyboard.KEYCODE_DELETE:
-			Log.d("onKey", "Delete key code");
+			Log.d("onKey", "Delete key code double tap");
+			CharSequence ch = ic.getTextBeforeCursor(1, 0);
 
-			deleteHandle(ic);
+			// if (evowel_swapped && ch != null && ch.charAt(0) == 0x1031) {
+			if (currentKeyboard instanceof BamarKeyboard
+					&& MyConfig.isPrimeBookOn() && MyConfig.isDoubleTap()) {
+				((BamarKeyboard) currentKeyboard).handleSingleDelete(ic);
+			} else {
+				deleteHandle(ic);
+			}
 			break;
 
 		case -202:
@@ -359,21 +371,20 @@ public class MyIME extends InputMethodService implements
 	public static void deleteHandle(InputConnection ic) {
 		CharSequence ch = ic.getTextBeforeCursor(1, 0);
 		if (ch.length() > 0) {
-			Log.d("Delete", "CharSequence length= " + ch.length() + ": char= "
-					+ ch.toString());
-
 			if (Character.isLowSurrogate(ch.charAt(0))
 					|| Character.isHighSurrogate(ch.charAt(0))) {
 				ic.deleteSurroundingText(2, 0);
-			} else
+			} else {
 				ic.deleteSurroundingText(1, 0);
-		} else
+			}
+		} else {
 			ic.deleteSurroundingText(1, 0);
+		}
 	}
 
 	public static boolean isEndofText(InputConnection ic) {
 		CharSequence charAfterCursor = ic.getTextAfterCursor(1, 0);
-		if(charAfterCursor==null)
+		if (charAfterCursor == null)
 			return true;
 		if (charAfterCursor.length() > 0)
 			return false;
