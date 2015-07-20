@@ -38,6 +38,8 @@ public class MyIME extends InputMethodService implements
 	private boolean shifted = false;
 	private boolean symbol = false;
 
+	public static String curComposing = "";
+
 	@Override
 	public void onCreate() {
 		// TODO Auto-generated method stub
@@ -108,6 +110,13 @@ public class MyIME extends InputMethodService implements
 		super.onStartInputView(info, restarting);
 
 		setInputView(onCreateInputView());
+		curComposing = "";
+	}
+
+	@Override
+	public void onFinishInput() {
+		super.onFinishInput();
+		commitComposing();
 	}
 
 	@Override
@@ -131,9 +140,9 @@ public class MyIME extends InputMethodService implements
 
 		case 2:
 			if (MyConfig.isDoubleTap())
-				return new BamarKeyboard(this, R.xml.my_2_qwerty);
+				return new Bamar(this, R.xml.my_2_qwerty);
 			else
-				return new BamarKeyboard(this, R.xml.my_qwerty);
+				return new Bamar(this, R.xml.my_qwerty);
 		case 3:
 			return new ShanKeyboard(this, R.xml.shn_qwerty);
 		case 4:
@@ -178,7 +187,7 @@ public class MyIME extends InputMethodService implements
 			return null;
 
 		case 2:
-			return new BamarKeyboard(this, R.xml.my_shifted_qwerty);
+			return new Bamar(this, R.xml.my_shifted_qwerty);
 		case 3:
 			return new ShanKeyboard(this, R.xml.shn_shifted_qwerty);
 		case 4:
@@ -233,12 +242,19 @@ public class MyIME extends InputMethodService implements
 
 	@SuppressLint("NewApi")
 	@Override
-	public void onKey(int arg0, int[] arg1) {
-		int primaryCode = arg0;
+	public void onKey(int primaryCode, int[] arg1) {
 		InputConnection ic = getCurrentInputConnection();
 		// emotion
 		if ((primaryCode >= 128000) && (primaryCode <= 128567)) {
-			ic.commitText(new String(Character.toChars(primaryCode)), 1);
+			curComposing = curComposing
+					+ new String(Character.toChars(primaryCode));
+			commitComposing();
+			return;
+		}
+		if (isWordSeparator(primaryCode) || isDigit(primaryCode)) {
+			curComposing = curComposing + (char) primaryCode;
+
+			commitComposing();
 			return;
 		}
 
@@ -252,6 +268,7 @@ public class MyIME extends InputMethodService implements
 			unshiftByLocale();
 			break;
 		case 300001:
+			commitComposing();
 			switch (getLocaleId()) {
 			case 2:
 				((BamarKeyboard) currentKeyboard).handleMoneySym(ic);
@@ -274,7 +291,9 @@ public class MyIME extends InputMethodService implements
 				Log.d("onKey", "Prime Book on");
 				switch (getLocaleId()) {
 				case 2:
-					((BamarKeyboard) currentKeyboard).handleMyanmarDelete(ic);
+					// ((BamarKeyboard)
+					// currentKeyboard).handleMyanmarDelete(ic);
+					((Bamar) currentKeyboard).handleSingleDelete(ic);
 					break;
 				case 3:
 					((ShanKeyboard) currentKeyboard).handleShanDelete(ic);
@@ -299,10 +318,11 @@ public class MyIME extends InputMethodService implements
 			CharSequence ch = ic.getTextBeforeCursor(1, 0);
 
 			// if (evowel_swapped && ch != null && ch.charAt(0) == 0x1031) {
-			if (currentKeyboard instanceof BamarKeyboard
-					&& MyConfig.isPrimeBookOn() && MyConfig.isDoubleTap()) {
-				((BamarKeyboard) currentKeyboard).handleSingleDelete(ic);
+			if (currentKeyboard instanceof Bamar && MyConfig.isPrimeBookOn()
+					&& MyConfig.isDoubleTap()) {
+				((Bamar) currentKeyboard).handleSingleDelete(ic);
 			} else {
+				commitComposing();
 				deleteHandle(ic);
 			}
 			break;
@@ -315,13 +335,15 @@ public class MyIME extends InputMethodService implements
 			kv.setKeyboard(currentKeyboard);
 			break;
 		case Keyboard.KEYCODE_DONE:
+			commitComposing();
 			ic.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN,
 					KeyEvent.KEYCODE_ENTER));
 			ic.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_UP,
 					KeyEvent.KEYCODE_ENTER));
+
 			break;
 		case -101:// Switch Keyboard;
-			// changeKeyboard();
+			commitComposing();
 			mInputMethodManager
 					.switchToNextInputMethod(getToken(), true /* onlyCurrentIme */);// Need
 																					// to
@@ -333,18 +355,23 @@ public class MyIME extends InputMethodService implements
 			break;
 		default:
 			char code = (char) primaryCode;
-			Log.d("handle shift", String.valueOf(code));
 			if (Character.isLetter(code) && caps) {
-				Log.d("handle shift", "Capital letters");
 				code = Character.toUpperCase(code);
 			}
 			String cText = String.valueOf(code);
-			Log.d("handle shift", cText);
 
 			switch (getLocaleId()) {
+			case 1:
+				cText = curComposing + cText;
+				if(!Character.isLetter(code)){
+					curComposing=cText;
+					commitComposing();
+					return;
+				}
+				break;
 			case 2:
-				cText = ((BamarKeyboard) currentKeyboard)
-						.handelMyanmarInputText(primaryCode, ic);
+				cText = ((Bamar) currentKeyboard).handelMyanmarInputText(
+						primaryCode, ic);
 				Log.d("onKey", "MyanmarHandle");
 				break;
 			case 3:
@@ -360,12 +387,22 @@ public class MyIME extends InputMethodService implements
 				cText = ((EastPwoKarenKeyboard) currentKeyboard)
 						.handleEastPwoKarenInput(primaryCode, ic);
 			}
-
-			ic.commitText(cText, 1);
+			if (cText != "" && cText != null) {
+				ic.setComposingText(cText, 1);
+				curComposing = cText;
+			}
+			Log.d("onKey", "curComposing = " + cText);
+			// ic.commitText(cText, 1);
 			if (shifted) {
 				unshiftByLocale();
 			}
 		}
+	}
+
+	private void commitComposing() {
+		getCurrentInputConnection().commitText(curComposing, 1);
+		curComposing = "";
+
 	}
 
 	public static void deleteHandle(InputConnection ic) {
@@ -464,6 +501,10 @@ public class MyIME extends InputMethodService implements
 	public static boolean isWordSeparator(int code) {
 		String separators = mWordSeparators;
 		return separators.contains(String.valueOf((char) code));
+	}
+
+	public boolean isDigit(int code) {
+		return Character.isDigit(code);
 	}
 
 	public static boolean isShanConsonant(int code) {
