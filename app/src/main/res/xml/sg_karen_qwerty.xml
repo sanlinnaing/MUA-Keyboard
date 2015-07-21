@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Keyboard xmlns:android="http://schemas.android.com/apk/res/android"
+    android:keyWidth="@fraction/key_width"
+    android:horizontalGap="@fraction/h_key_gap"
+    android:verticalGap="@fraction/v_key_gap"
+    android:keyHeight="@dimen/key_height"
+    >
+    <Row>
+        <Key android:codes="4161" android:keyLabel="၁" android:keyEdgeFlags="left"/>
+        <Key android:codes="4162" android:keyLabel="၂"/>
+        <Key android:codes="4163" android:keyLabel="၃"/>
+        <Key android:codes="4164" android:keyLabel="၄"/>
+        <Key android:codes="4165" android:keyLabel="၅"/>
+        <Key android:codes="4166" android:keyLabel="၆"/>
+        <Key android:codes="4167" android:keyLabel="၇"/>
+        <Key android:codes="4168" android:keyLabel="၈"/>
+        <Key android:codes="4169" android:keyLabel="၉"/>
+        <Key android:codes="4160" android:keyLabel="၀" android:keyEdgeFlags="right"/>
+    </Row>
+    
+    <Row>
+        <Key android:codes="4195,4102" android:keyLabel="ၣ" android:popupCharacters="ဆ" android:keyEdgeFlags="left"/>
+        <Key android:codes="4112,4193" android:keyLabel="တ" android:popupCharacters="ၡ"/>
+        <Key android:codes="4116,4125" android:keyLabel="န" android:popupCharacters="ဝ"/>
+        <Key android:codes="4121" android:keyLabel="မ"/>
+        <Key android:codes="4129" android:keyLabel="အ"/>
+        <Key android:codes="4117" android:keyLabel="ပ"/>
+        <Key android:codes="4096" android:keyLabel="က"/>
+        <Key android:codes="4100,4135" android:keyLabel="င" android:popupCharacters="ဧ"/>
+        <Key android:codes="4126,4127" android:keyLabel="သ" android:popupCharacters="ဟ"/>
+        <Key android:codes="4101,4111" android:keyLabel="စ" android:popupCharacters="ဏ" android:keyEdgeFlags="right"/>
+    </Row>
+    
+    <Row>
+        <Key android:codes="4196,4155" android:keyLabel="ၤ" android:popupCharacters="ျ" android:keyEdgeFlags="left"/>
+        <Key android:codes="4194,4158" android:keyLabel="ၢ" android:popupCharacters="ှ"/>
+        <Key android:codes="4142,4141" android:keyLabel="ီ" android:popupCharacters="ိ"/>
+        <Key android:codes="4154,4192" android:keyLabel="်" android:popupCharacters="ၠ"/>
+        <Key android:codes="4139,4157" android:keyLabel="ါ" android:popupCharacters="ွ"/>
+        <Key android:codes="4151,4150" android:keyLabel="့" android:popupCharacters="ံ"/>
+        <Key android:codes="4146,4156" android:keyLabel="ဲ" android:popupCharacters="ြ"/>
+        <Key android:codes="4143,4144" android:keyLabel="ု" android:popupCharacters="ူ"/>
+        <Key android:codes="4114" android:keyLabel="ဒ"/>
+        <Key android:codes="4152,4098" android:keyLabel="း" android:popupCharacters="ဂ" android:keyEdgeFlags="right"/>
+    </Row>
+    
+    <Row>
+        
+        <Key android:codes="-1" android:keyIcon="@drawable/sym_keyboard_shift" 
+                android:keyWidth="14%p" android:isModifier="true"
+                 android:keyEdgeFlags="left"/>
+        <Key android:codes="4118" android:keyLabel="ဖ"/>
+        <Key android:codes="4113" android:keyLabel="ထ"/>
+        <Key android:codes="4097,4099" android:keyLabel="ခ" android:popupCharacters="ဃ"/>
+        <Key android:codes="4124" android:keyLabel="လ"/>
+        <Key android:codes="4120" android:keyLabel="ဘ"/>
+        <Key android:codes="4106,4123" android:keyLabel="ည" android:popupCharacters="ရ"/>
+        <Key android:codes="4140,4122" android:keyLabel="ာ" android:popupCharacters="ယ"/>
+         <Key android:codes="300000" android:keyIcon="@drawable/sym_keyboard_delete" 
+                android:keyWidth="14%p" android:isRepeatable="true" android:keyEdgeFlags="right" android:isModifier="true"/>
+    </Row>
+    
+    <Row android:rowEdgeFlags="bottom">
+        <Key android:codes="-2" android:keyLabel="၁၂၃" android:keyWidth="11%p" android:keyEdgeFlags="left" android:isModifier="true"/>
+        <!--
+            android:codes: -101 is not a framework-defined key code but a key code that is
+            privately defined in com.example.android.softkeyboard.LatinKeyboardView.
+        -->
+        <Key android:codes="-101" android:keyIcon="@drawable/sym_keyboard_language_switch"
+                android:keyWidth="11%p" android:isModifier="true"/>
+       
+        <Key android:codes="-202" android:keyLabel="☺" 
+                android:keyWidth="9%p" android:isModifier="true"/>
+        <Key android:codes="32" android:keyIcon="@drawable/sym_keyboard_space" 
+                android:keyWidth="34%p" android:isRepeatable="true" android:isModifier="true"/>
+        <Key android:codes="46,44,63" android:keyLabel=". , ?"
+                android:keyWidth="11%p" android:isModifier="true"/>
+        <Key android:codes="-4" android:keyIcon="@drawable/sym_keyboard_return" 
+                android:keyWidth="18%p" android:keyEdgeFlags="right" android:isModifier="true"/>
+    </Row>
+</Keyboard>
+    

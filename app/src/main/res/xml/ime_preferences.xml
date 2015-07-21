@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    android:title="@string/settings_name" >
+
+    <CheckBoxPreference
+        android:defaultValue="true"
+        android:key="prime_book_typing_on_off"
+        android:summary="@string/prime_book_typeing_on_off_title_summ"
+        android:title="@string/prime_book_typeing_on_off_title" />
+    <CheckBoxPreference
+        android:defaultValue="false"
+        android:key="double_tap"
+        android:summary="@string/double_tap_summ"
+        android:title="@string/double_tap_title" />
+    
+    <ListPreference
+        android:defaultValue="1"
+        android:entries="@array/themeNameArray"
+        android:entryValues="@array/themeValueArray"
+        android:key="choose_theme"
+        android:summary="@string/choose_theme_summ"
+        android:title="@string/choose_theme_title" />
+
+    <CheckBoxPreference
+        android:defaultValue="false"
+        android:key="play_sound"
+        android:summary="@string/play_sound_summ"
+        android:title="@string/play_sound_title" />
+    <CheckBoxPreference
+        android:defaultValue="true"
+        android:key="hint_keylabel"
+        android:summary="@string/hint_keylabel_summ"
+        android:title="@string/hint_keylabel_title" />
+
+    <EditTextPreference
+        android:key="test_keyboard_text"
+        android:summary="@string/test_keyboard_summ"
+        android:title="@string/test_keyboard_title" />
+
+    <Preference
+        android:key="go_to_ime"
+        android:summary="@string/go_to_ime_setting_summ"
+        android:title="@string/go_to_ime_setting" >
+    </Preference>
+    <Preference
+        android:key="choose_keyboard"
+        android:summary="@string/choose_keyboard_summ"
+        android:title="@string/choose_keyboard_title" >
+    </Preference>
+    <Preference android:title="@string/faq" >
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="http://www.facebook.com/groups/mmUnicode" />
+    </Preference>
+
+</PreferenceScreen>
