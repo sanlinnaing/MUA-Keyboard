@@ -78,6 +78,7 @@ public class BamarKeyboard extends MyKeyboard {
         // uu_vowel+ii_vowel = u autocorrect
         if ((charcodeBeforeCursor == 0x1025) && (primaryCode == 0x102e)) {
 
+
             ic.deleteSurroundingText(1, 0);
             return String.valueOf((char) 4134); // U
         }
@@ -168,11 +169,14 @@ public class BamarKeyboard extends MyKeyboard {
     }
 
     public void handleMyanmarDelete(InputConnection ic) {
-        if (MyIME.isEndofText(ic)) {
+       /* if (MyIME.isEndofText(ic)) {
             handleSingleDelete(ic);
         } else {
             handelMyanmarWordDelete(ic);
-        }
+        }*/
+        //temporary fixed for zwsp clear error
+        //disabled single delete feature
+        handelMyanmarWordDelete(ic);
     }
 
     private void handelMyanmarWordDelete(InputConnection ic) {
