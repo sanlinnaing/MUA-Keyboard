@@ -11,6 +11,7 @@ public class BamarKeyboard extends MyKeyboard {
     private boolean swapConsonant = false;
     private short medialCount = 0;
     private boolean swapMedial = false;
+    private boolean hasZWSP = false;
     private boolean evowel_virama = false;
     private int[] medialStack = new int[3];
 
@@ -27,6 +28,7 @@ public class BamarKeyboard extends MyKeyboard {
             CharSequence twoCharBeforeChar = ic.getTextBeforeCursor(2, 0);
             if (!(twoCharBeforeChar.length() == 2 && twoCharBeforeChar.charAt(0) == 0x103a && twoCharBeforeChar.charAt(1) == 0x1039)) {
                 char temp[] = {(char) 8203, (char) primaryCode}; // ZWSP added
+                hasZWSP = true;
                 outText = String.valueOf(temp);
             }
             swapConsonant = false;
@@ -376,7 +378,13 @@ public class BamarKeyboard extends MyKeyboard {
     }
 
     private String reorder_e_vowel(int primaryCode, InputConnection ic) {
-        ic.deleteSurroundingText(1, 0);
+        if (hasZWSP) {
+            ic.deleteSurroundingText(2, 0);
+            hasZWSP = false;
+        } else {
+            ic.deleteSurroundingText(1, 0);
+        }
+
         char[] reorderChars = {(char) primaryCode, (char) 0x1031};
         String reorderString = String.valueOf(reorderChars);
         return reorderString;
