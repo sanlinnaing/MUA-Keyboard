@@ -1,494 +1,455 @@
-package com.sanlin.mkeyboard;
+package com.sanlin.mkeyboard
 
-import android.content.Context;
-import android.util.Log;
-import android.view.inputmethod.InputConnection;
+import android.content.Context
+import android.view.inputmethod.InputConnection
 
-public class MonKeyboard extends MyKeyboard {
+class MonKeyboard : MyKeyboard {
+    private val DOT_BELOW = 0x1037
+    private val ASAT = 0x103a
+    private val NYA = 0x1009
+    private val UU = 0x1025
+    private val II_VOWEL = 0x102e
+    private val AA_VOWEL = 0x102c
+    private val SS = 0x1005
+    private val YA_MEDIAL = 0x103b
+    private val E_VOWEL = 0x1031
+    private val VIRAMA = 0x1039
+    private var stackPointer = 0
+    private val stack = IntArray(3)
+    private var swapConsonant = false
+    private var medialCount: Short = 0
+    private var swapMedial = false
+    private var swapMonMedial = false
+    private var EVOWEL_VIRAMA = false
+    private val medialStack = IntArray(3)
 
-	private int DOT_BELOW = 4151;
-	private int ASAT = 4154;
-	private int NYA = 4105;
-	private int UU = 4133;
-	private int II_VOWEL = 4142;
-	private int AA_VOWEL = 4140;
-	private int SS = 4101;
-	private int YA_MEDIAL = 4155;
+    constructor(context: Context?, xmlLayoutResId: Int) : super(context, xmlLayoutResId)
 
-	private int stackPointer = 0;
-	private int[] stack = new int[3];
+    constructor(
+        context: Context?, layoutTemplateResId: Int,
+        characters: CharSequence?, columns: Int, horizontalPadding: Int
+    ) : super(
+        context, layoutTemplateResId, characters, columns,
+        horizontalPadding
+    )
 
-	private boolean swapConsonant = false;
-	private short medialCount = 0;
-	private boolean swapMedial = false;
-	private boolean swapMonMedial = false;
-	private int E_VOWEL = 4145;
-	private int VIRAMA = 4153;
-	private boolean EVOWEL_VIRAMA = false;
-	private int[] medialStack = new int[3];
+    fun handleMonInput(primaryCode: Int, ic: InputConnection): String {
+        var charBeforeCursor = ic.getTextBeforeCursor(1, 0)
+        val charCodeBeforeCursor: Int
+        // if getTextBeforeCursor return null, issues on version 1.1
+        if (charBeforeCursor == null) {
+            charBeforeCursor = ""
+        }
+        if (charBeforeCursor.length > 0) charCodeBeforeCursor = charBeforeCursor.get(0).code
+        else {
+            swapConsonant = false
+            medialCount = 0
+            swapMedial = false
+            swapMonMedial = false
+            EVOWEL_VIRAMA = false
+            return primaryCode.toChar().toString() // else it is the first
+        } // character no need to
 
-	public MonKeyboard(Context context, int xmlLayoutResId) {
-		super(context, xmlLayoutResId);
-		// TODO Auto-generated constructor stub
-	}
+        // reorder
+        // tha + ra_medial = aw vowel autocorrect
+        if ((charCodeBeforeCursor == 0x101e) && (primaryCode == 0x103c)) {
+            ic.deleteSurroundingText(1, 0)
+            return 0x1029.toChar().toString()
+        }
+        // dot_above + au vowel = au vowel + dot_above autocorrect
+        if ((charCodeBeforeCursor == 0x1036) && (primaryCode == 0x102f)) {
+            val temp = charArrayOf(0x102f.toChar(), 0x1036.toChar())
+            ic.deleteSurroundingText(1, 0)
+            return String(temp)
+        }
+        // ss + ya_medial = za myint zwe autocorrect
+        if ((charCodeBeforeCursor == SS) && (primaryCode == YA_MEDIAL)) {
+            ic.deleteSurroundingText(1, 0)
+            return 0x1008.toChar().toString()
+        }
+        // uu + aa_vowel = NYA + aa_vowel autocorrect
+        if ((charCodeBeforeCursor == UU) && (primaryCode == AA_VOWEL)) {
+            val temp = charArrayOf(NYA.toChar(), AA_VOWEL.toChar())
+            ic.deleteSurroundingText(1, 0)
+            return String(temp)
+        }
+        // uu_vowel+ii_vowel = u autocorrect
+        if ((charCodeBeforeCursor == UU) && (primaryCode == II_VOWEL)) {
+            ic.deleteSurroundingText(1, 0)
+            return 0x1026.toChar().toString() // U
+        }
+        // uu_vowel+asat autocorrect
+        if ((charCodeBeforeCursor == UU) && (primaryCode == ASAT)) {
+            val temp = charArrayOf(NYA.toChar(), ASAT.toChar())
+            ic.deleteSurroundingText(1, 0)
+            return String(temp)
+        }
+        // asat + dot below to reorder dot below + asat
+        if ((charCodeBeforeCursor == ASAT) && (primaryCode == DOT_BELOW)) {
+            val temp = charArrayOf(DOT_BELOW.toChar(), ASAT.toChar())
+            ic.deleteSurroundingText(1, 0)
+            return String(temp)
+        }
+        if (MyConfig.isPrimeBookOn()) {
+            return handleMonPrimeBook(primaryCode, ic, charCodeBeforeCursor)
+        }
+        return primaryCode.toChar().toString()
+    }
 
-	public MonKeyboard(Context context, int layoutTemplateResId,
-			CharSequence characters, int columns, int horizontalPadding) {
-		super(context, layoutTemplateResId, characters, columns,
-				horizontalPadding);
-		// TODO Auto-generated constructor stub
-	}
+    private fun handleMonPrimeBook(
+        primaryCode: Int, ic: InputConnection,
+        charCodeBeforeCursor: Int
+    ): String {
+        // E vowel + cons + virama + cons
+        if ((primaryCode == VIRAMA) and (swapConsonant)) {
+            swapConsonant = false
+            EVOWEL_VIRAMA = true
+            return primaryCode.toChar().toString()
+        }
 
-	public String handleMonInput(int primaryCode, InputConnection ic) {
-		CharSequence charBeforeCursor = ic.getTextBeforeCursor(1, 0);
-		Integer charcodeBeforeCursor;
-		// if getTextBeforeCursor return null, issues on version 1.1
-		if (charBeforeCursor == null) {
-			charBeforeCursor = "";
-		}
-		if (charBeforeCursor.length() > 0)
-			charcodeBeforeCursor = Integer.valueOf(charBeforeCursor.charAt(0));
-		else {
-			swapConsonant = false;
-			medialCount = 0;
-			swapMedial = false;
-			swapMonMedial = false;
-			EVOWEL_VIRAMA = false;
-			return String.valueOf((char) primaryCode);// else it is the first
-		} // character no need to
-			// reorder
-		// tha + ra_medial = aw vowel autocorrect
-		if ((charcodeBeforeCursor == 4126) && (primaryCode == 4156)) {
-			ic.deleteSurroundingText(1, 0);
-			return String.valueOf((char) 4137);
-		}
-		// dot_above + au vowel = au vowel + dot_above autocorrect
-		if ((charcodeBeforeCursor == 4150) && (primaryCode == 4143)) {
-			char temp[] = { (char) 4143, (char) 4150 };
-			ic.deleteSurroundingText(1, 0);
-			return String.valueOf(temp);
-		}
-		// ss + ya_medial = za myint zwe autocorrect
-		if ((charcodeBeforeCursor == SS) && (primaryCode == YA_MEDIAL)) {
-			ic.deleteSurroundingText(1, 0);
-			return String.valueOf((char) 4104);
-		}
-		// uu + aa_vowel = NYA + aa_vowel autocorrect
-		if ((charcodeBeforeCursor == UU) && (primaryCode == AA_VOWEL)) {
-			char temp[] = { (char) NYA, (char) AA_VOWEL };
-			ic.deleteSurroundingText(1, 0);
-			return String.valueOf(temp);
-		}
-		// uu_vowel+ii_vowel = u autocorrect
-		if ((charcodeBeforeCursor == UU) && (primaryCode == II_VOWEL)) {
+        // if e_vowel renew checking flag if
+        if (primaryCode == E_VOWEL) {
+            var outText = primaryCode.toChar().toString()
+            if (isConsonant(charCodeBeforeCursor)) {
+                val temp = charArrayOf(0x200b.toChar(), primaryCode.toChar()) // ZWSP added
+                outText = String(temp)
+            }
+            swapConsonant = false
+            medialCount = 0
+            swapMedial = false
+            swapMonMedial = false
+            EVOWEL_VIRAMA = false
+            return outText
+        }
 
-			ic.deleteSurroundingText(1, 0);
-			return String.valueOf((char) 4134); // U
-		}
-		// uu_vowel+asat autocorrect
-		if ((charcodeBeforeCursor == UU) && (primaryCode == ASAT)) {
-			char temp[] = { (char) NYA, (char) ASAT };
-			ic.deleteSurroundingText(1, 0);
-			return String.valueOf(temp);
-		}
-		// asat + dot below to reorder dot below + asat
-		if ((charcodeBeforeCursor == ASAT) && (primaryCode == DOT_BELOW)) {
-			char temp[] = { (char) DOT_BELOW, (char) ASAT };
-			ic.deleteSurroundingText(1, 0);
-			return String.valueOf(temp);
-		}
-		if (MyConfig.isPrimeBookOn()) {
-			return handleMonPrimeBook(primaryCode, ic, charcodeBeforeCursor);
-		}
-		return String.valueOf((char) primaryCode);
-	}
+        if (EVOWEL_VIRAMA) {
+            if (isConsonant(primaryCode)) {
+                swapConsonant = true
+                ic.deleteSurroundingText(2, 0)
+                val reorderChars = charArrayOf(
+                    VIRAMA.toChar(), primaryCode.toChar(),
+                    E_VOWEL.toChar()
+                )
+                val reorderString = String(reorderChars)
+                EVOWEL_VIRAMA = false
+                return reorderString
+            } else {
+                EVOWEL_VIRAMA = false
+            }
+        }
+        if (isOthers(primaryCode)) {
+            swapConsonant = false
+            medialCount = 0
+            swapMedial = false
+            swapMonMedial = false
+            EVOWEL_VIRAMA = false
+            return primaryCode.toChar().toString()
+        }
+        // if no previous E_vowel, no need to check Reorder.
+        if (charCodeBeforeCursor != E_VOWEL) {
+            return primaryCode.toChar().toString()
+        }
+        // Next other instructions will run charCodeBeforeCursor == E_VOWEL.
+        // if input character is consonant and consonant e_vowel swapped,
+        // no need to reorder. con+vowel+con
+        if (isConsonant(primaryCode) && (swapConsonant)) {
+            swapConsonant = false
+            swapMedial = false
+            swapMonMedial = false
+            medialCount = 0
+            return primaryCode.toChar().toString()
+        }
+        if (isConsonant(primaryCode)) {
+            if (!swapConsonant) {
+                swapConsonant = true
+                return reorderEVowel(primaryCode, ic)
+            } else {
+                swapConsonant = false
+                return primaryCode.toChar().toString()
+            }
+        }
+        if (isMynMedial(primaryCode)) {
+            // delete e_vowel and create Type character + e_vowel
+            // (reordering)
 
-	private String handleMonPrimeBook(int primaryCode, InputConnection ic,
-			Integer charcodeBeforeCursor) {
-		// E vowel + cons + virama + cons
-		if ((primaryCode == VIRAMA) & (swapConsonant)) {
-			swapConsonant = false;
-			EVOWEL_VIRAMA = true;
-			return String.valueOf((char) primaryCode);
-		}
+            if (isValidMedial(primaryCode)) {
+                medialStack[medialCount.toInt()] = primaryCode
+                medialCount++
+                swapMedial = true
+                return reorderEVowel(primaryCode, ic)
+            }
+        }
+        if (isMonMedial(primaryCode)) {
+            if ((!swapMonMedial) && (!swapMedial)) {
+                swapMonMedial = true
+                return reorderEVowel(primaryCode, ic)
+            }
+            swapMonMedial = false
+            return primaryCode.toChar().toString()
+        }
+        return primaryCode.toChar().toString()
+    }
 
-		// if e_vowel renew checking flag if
-		if (primaryCode == E_VOWEL) {
-			String outText = String.valueOf((char) primaryCode);
-			if (isConsonant(charcodeBeforeCursor)) {
-				char temp[] = { (char) 8203, (char) primaryCode }; // ZWSP added
-				outText = String.valueOf(temp);
-			}
-			swapConsonant = false;
-			medialCount = 0;
-			swapMedial = false;
-			swapMonMedial = false;
-			EVOWEL_VIRAMA = false;
-			return outText;
-		}
+    fun handleMonDelete(ic: InputConnection) {
+        if (MyIME.isEndofText(ic)) {
+            handleSingleDelete(ic)
+        } else {
+            handelMonWordDelete(ic)
+        }
+    }
 
-		if (EVOWEL_VIRAMA) {
-			if (isConsonant(primaryCode)) {
-				swapConsonant = true;
-				ic.deleteSurroundingText(2, 0);
-				char[] reorderChars = { (char) VIRAMA, (char) primaryCode,
-						(char) E_VOWEL };
-				String reorderString = String.valueOf(reorderChars);
-				EVOWEL_VIRAMA = false;
-				return reorderString;
-			} else {
-				EVOWEL_VIRAMA = false;
-			}
-		}
-		if (isOthers(primaryCode)) {
-			swapConsonant = false;
-			medialCount = 0;
-			swapMedial = false;
-			swapMonMedial = false;
-			EVOWEL_VIRAMA = false;
-			return String.valueOf((char) primaryCode);
-		}
-		// if no previous E_vowel, no need to check Reorder.
-		if (charcodeBeforeCursor != E_VOWEL) {
-			return String.valueOf((char) primaryCode);
-		}
-		// Next other instructions will run charcodeBeforeCursor == E_VOWEL.
-		// if input character is consonant and consonant e_vowel swapped, no
-		// need
-		// to reorder. con+vowel+con
-		if (isConsonant(primaryCode) && (swapConsonant)) {
-			swapConsonant = false;
-			swapMedial = false;
-			swapMonMedial = false;
-			medialCount = 0;
-			return String.valueOf((char) primaryCode);
-		}
-		if (isConsonant(primaryCode)) {
-			if (!swapConsonant) {
-				swapConsonant = true;
-				return reorder_e_vowel(primaryCode, ic);
-			} else {
-				swapConsonant = false;
-				return String.valueOf((char) primaryCode);
-			}
-		}
-		if (isMynMedial(primaryCode)) {
-			// delete e_vowel and create Type character + e_vowel
-			// (reordering)
+    private fun handelMonWordDelete(ic: InputConnection) {
+        var i = 1
+        var getText = ic.getTextBeforeCursor(1, 0)
+        // null error fixed on issue of version 1.1
+        if ((getText == null) || (getText.length <= 0)) {
+            return  // fixed on issue of version 1.2, cause=(getText is null) solution=(if getText is null, return)
+        }
+        // for Emotion delete
+        if (Character.isLowSurrogate(getText[0])
+            || Character.isHighSurrogate(getText[0])
+        ) {
+            ic.deleteSurroundingText(2, 0)
+            return
+        }
+        var current: Int
+        var beforeLength = 0
+        var currentLength = 1
 
-			if (isValidMedial(primaryCode)) {
-				medialStack[medialCount] = primaryCode;
-				medialCount++;
-				swapMedial = true;
-				return reorder_e_vowel(primaryCode, ic);
-			}
-		}
-		if (isMonMedial(primaryCode)) {
-			if ((!swapMonMedial) && (!swapMedial)) {
-				swapMonMedial = true;
-				return reorder_e_vowel(primaryCode, ic);
-			}
-			swapMonMedial = false;
-			return String.valueOf((char) primaryCode);
-		}
-		return String.valueOf((char) primaryCode);
-	}
+        current = getText[0].code
+        // word or separator
+        while (!(isConsonant(current) || MyIME.isWordSeparator(current))
+            && (beforeLength != currentLength)
+        ) {
+            i++
+            beforeLength = currentLength
+            getText = ic.getTextBeforeCursor(i, 0)
+            currentLength = getText!!.length
+            current = getText[0].code
+        }
+        if (beforeLength == currentLength) {
+            ic.deleteSurroundingText(1, 0)
+        } else {
+            getText = ic.getTextBeforeCursor(i + 1, 0)
+            val virama = getText!![0].code
+            if (virama == VIRAMA) {
+                ic.deleteSurroundingText(i + 1, 0)
+            } else {
+                ic.deleteSurroundingText(i, 0)
+            }
+        }
 
-	public void handleMonDelete(InputConnection ic) {
-		if (MyIME.isEndofText(ic)) {
-			handleSingleDelete(ic);
-			Log.d("HandleMyanmarDelete", "it is end of text box");
-		} else {
-			handelMonWordDelete(ic);
-			Log.d("HandleMyanmarDelete", "it is not the end of text");
-		}
-	}
+        swapConsonant = false
+        medialCount = 0
+        swapMedial = false
+    }
 
-	private void handelMonWordDelete(InputConnection ic) {
-		int i = 1;
-		CharSequence getText = ic.getTextBeforeCursor(1, 0);
-		// null error fixed on issue of version 1.1
-		if ((getText == null)||(getText.length()<=0)) {
-			return; // fixed on issue of version 1.2, cause=(getText is null) solution=(if getText is null, return)
-		}
-		// for Emotion delete
-		if (Character.isLowSurrogate(getText.charAt(0))
-				|| Character.isHighSurrogate(getText.charAt(0))) {
-			ic.deleteSurroundingText(2, 0);
-			return;
-		}
-		Integer current;
-		int beforeLength = 0;
-		int currentLength = 1;
-		
-			current = Integer.valueOf(getText.charAt(0));
-			Log.d("handleDelete", String.valueOf(current.intValue()));
-			while (!(isConsonant(current) || MyIME.isWordSeparator(current))// or
-																			// Word
-					// separator
-					&& (beforeLength != currentLength)) {
-				i++;
-				beforeLength = currentLength;
-				getText = ic.getTextBeforeCursor(i, 0);
-				currentLength = getText.length();
-				current = Integer.valueOf(getText.charAt(0));
-			}
-			if (beforeLength == currentLength) {
-				ic.deleteSurroundingText(1, 0);
-			} else {
-				getText = ic.getTextBeforeCursor(i + 1, 0);
-				int virama = getText.charAt(0);
-				if (virama == VIRAMA) {
-					ic.deleteSurroundingText(i + 1, 0);
-				} else {
-					ic.deleteSurroundingText(i, 0);
-				}
-			}
-		
-		swapConsonant = false;
-		medialCount = 0;
-		swapMedial = false;
+    private fun handleSingleDelete(ic: InputConnection) {
+        var getText = ic.getTextBeforeCursor(1, 0)
+        val firstChar: Int
+        val secPrev: Int
+        // if getTextBeforeCursor return null, issues on version 1.1
+        if (getText == null) {
+            getText = ""
+        }
+        if (getText.length > 0) {
+            firstChar = getText.get(0).code
+            if (firstChar == E_VOWEL) {
+                // Need to initialize FLAG
+                swapConsonant = false
+                swapMedial = false
+                swapMonMedial = false
+                medialCount = 0
+                stackPointer = 0
+                // 2nd previous character
+                getText = ic.getTextBeforeCursor(2, 0)
+                secPrev = getText!![0].code
+                // Mon Medial + E_VOWEL
+                if (isMonMedial(secPrev)) {
+                    val getThirdText = ic.getTextBeforeCursor(3, 0)
+                    var thirdChar = 0
+                    if (getThirdText!!.length == 3) {
+                        thirdChar = getThirdText[0].code
+                        if (isConsonant(thirdChar)) {
+                            deleteCharBeforeEvowel(ic)
+                            swapMonMedial = false
+                            swapConsonant = true
+                        }
+                    }
+                } else if (isMynMedial(secPrev)) { // Myn Medial + E_VOWEL
+                    getFlagMedial(ic)
+                    if (swapConsonant) {
+                        deleteCharBeforeEvowel(ic)
+                        medialCount--
 
-	}
+                        stackPointer--
+                        if (medialCount <= 0) {
+                            swapMedial = false
+                        }
+                        for (j in 0 until medialCount) {
+                            medialStack[j] = stack[stackPointer]
+                            stackPointer--
+                        }
+                        // nul point exception cause medialCount = -1
+                        if (medialCount < 0) {
+                            medialCount = 0
+                        }
+                    } else {
+                        ic.deleteSurroundingText(1, 0)
+                    }
+                } else if (isConsonant(secPrev)) {
+                    val getThirdText = ic.getTextBeforeCursor(3, 0)
 
-	private void handleSingleDelete(InputConnection ic) {
+                    var thirdChar = 0
+                    if (getThirdText!!.length == 3) thirdChar = getThirdText[0].code
+                    if (thirdChar == VIRAMA) {
+                        deleteTwoCharBeforeEvowel(ic)
+                    } else {
+                        deleteCharBeforeEvowel(ic)
+                    }
+                    swapConsonant = false
+                    swapMedial = false
+                    medialCount = 0
+                } else {
+                    ic.deleteSurroundingText(1, 0)
+                }
+            } else {
+                // If not E_Vowel
+                getText = ic.getTextBeforeCursor(2, 0)
+                secPrev = getText!![0].code
+                if (secPrev == E_VOWEL) swapConsonant = true
+                // ic.deleteSurroundingText(1, 0);
+                MyIME.deleteHandle(ic)
+            }
+        } else {
+            // It is the start of input text box
+            ic.deleteSurroundingText(1, 0)
+        }
+        stackPointer = 0
+        val logText = StringBuilder()
+        for (k in 0 until medialCount) {
+            logText.append(medialStack[k].toChar().toString()).append(" | ")
+        }
+    }
 
-		CharSequence getText = ic.getTextBeforeCursor(1, 0);
-		Integer firstChar;
-		Integer secPrev;
-		// if getTextBeforeCursor return null, issues on version 1.1
-		if (getText == null) {
-			getText = "";
-		}
-		if (getText.length() > 0) {
-			firstChar = Integer.valueOf(getText.charAt(0));
-			if (firstChar == E_VOWEL) {
-				// Need to initialize FLAG
-				swapConsonant = false;
-				swapMedial = false;
-				swapMonMedial = false;
-				medialCount = 0;
-				stackPointer = 0;
-				// 2nd previous characher
-				getText = ic.getTextBeforeCursor(2, 0);
-				secPrev = Integer.valueOf(getText.charAt(0));
-				// Mon Medial + E_VOWEL
-				if (isMonMedial(secPrev)) {
-					CharSequence getThirdText = ic.getTextBeforeCursor(3, 0);
-					int thirdChar = 0;
-					if (getThirdText.length() == 3) {
-						thirdChar = getThirdText.charAt(0);
-						if (isConsonant(thirdChar)) {
-							deleteCharBeforeEvowel(ic);
-							swapMonMedial = false;
-							swapConsonant = true;
-						}
-					}
-				} else if (isMynMedial(secPrev)) {// Myn Medial + E_VOWEL
-					getFlagMedial(ic);
-					if (swapConsonant == true) {
-						deleteCharBeforeEvowel(ic);
-						medialCount--;
+    private fun deleteCharBeforeEvowel(ic: InputConnection) {
+        ic.deleteSurroundingText(2, 0)
+        ic.commitText(E_VOWEL.toChar().toString(), 1)
+    }
 
-						stackPointer--;
-						if (medialCount <= 0) {
-							swapMedial = false;
-						}
-						for (int j = 0; j < medialCount; j++) {
-							medialStack[j] = stack[stackPointer];
-							stackPointer--;
-						}
-						// nul point exception cause medialCount = -1
-						if (medialCount < 0) {
-							medialCount = 0;
-						}
-					} else {
-						ic.deleteSurroundingText(1, 0);
-					}
+    private fun deleteTwoCharBeforeEvowel(ic: InputConnection) {
+        ic.deleteSurroundingText(3, 0)
+        ic.commitText(E_VOWEL.toChar().toString(), 1)
+    }
 
-				} else if (isConsonant(secPrev)) {
-					CharSequence getThirdText = ic.getTextBeforeCursor(3, 0);
+    private fun getFlagMedial(ic: InputConnection) {
+        var getText = ic.getTextBeforeCursor(2, 0)
+        var beforeLength = 0
+        var currentLength = 1
+        var i = 2
+        if (getText == null) {
+            getText = ""
+        }
+        var current = getText.get(0).code
+        // checking medial and store medial to stack orderly
+        // till to Consonant or word separator or till at the start of input box
+        while (!(isConsonant(current) || MyIME.isWordSeparator(current))
+            && (beforeLength != currentLength) && (isMynMedial(current))
+        ) {
+            medialCount++
+            pushMedialStack(current) //
+            swapMedial = true
+            swapConsonant = true
+            i++
+            beforeLength = currentLength
+            getText = ic.getTextBeforeCursor(i, 0)
+            currentLength = getText!!.length // set current length of new
+            current = getText[0].code
+        }
+        if (isConsonant(current)) {
+            return
+        }
 
-					int thirdChar = 0;
-					if (getThirdText.length() == 3)
-						thirdChar = getThirdText.charAt(0);
-					if (thirdChar == VIRAMA) {
-						deleteTwoCharBeforeEvowel(ic);
-					} else {
-						deleteCharBeforeEvowel(ic);
-					}
-					swapConsonant = false;
-					swapMedial = false;
-					medialCount = 0;
-				} else {
-					ic.deleteSurroundingText(1, 0);
-				}
-			} else {
-				// If not E_Vowel
-				getText = ic.getTextBeforeCursor(2, 0);
-				secPrev = Integer.valueOf(getText.charAt(0));
-				if (secPrev == E_VOWEL)
-					swapConsonant = true;
-				// ic.deleteSurroundingText(1, 0);
-				MyIME.deleteHandle(ic);
-			}
-		} else {
-			// It is the start of input text box
-			ic.deleteSurroundingText(1, 0);
-		}
-		stackPointer = 0;
-		// / Log output need to delete
-		String logText = "";
-		for (int k = 0; k < medialCount; k++) {
-			logText = logText + String.valueOf((char) medialStack[k]) + " | ";
-		}
-		Log.d("SingleDelete", "medialSTack" + logText);
+        if ((!isMynMedial(current)) && (!isConsonant(current))) {
+            swapMedial = false
+            swapConsonant = false
+            medialCount = 0
+            stackPointer = 0
+            return
+        }
+        if (beforeLength == currentLength) {
+            swapMedial = false
+            swapConsonant = false
+            medialCount = 0
+            stackPointer = 0
+        }
+    }
 
-	}
+    private fun pushMedialStack(current: Int) {
+        stack[stackPointer] = current
+        stackPointer++
+    }
 
-	private void deleteCharBeforeEvowel(InputConnection ic) {
-		ic.deleteSurroundingText(2, 0);
-		ic.commitText(String.valueOf((char) E_VOWEL), 1);
-	}
+    private fun reorderEVowel(primaryCode: Int, ic: InputConnection): String {
+        ic.deleteSurroundingText(1, 0)
+        val reorderChars = charArrayOf(primaryCode.toChar(), E_VOWEL.toChar())
+        return String(reorderChars)
+    }
 
-	private void deleteTwoCharBeforeEvowel(InputConnection ic) {
-		ic.deleteSurroundingText(3, 0);
-		ic.commitText(String.valueOf((char) E_VOWEL), 1);
-	}
+    private fun isValidMedial(primaryCode: Int): Boolean {
+        return if (!swapConsonant)  // if no previous consonant, it is invalid
+            false
+        else if (!swapMedial)  // if no previous medial, no need to check it is
+        // valid
+            true
+        else if (medialCount > 2)  // only 3 times of medial;
+            false
+        else if (medialStack[medialCount - 1] == 0x103e)  // if previous medial is
+        // Ha medial, no other
+        // medial followed
+            false
+        else if ((medialStack[medialCount - 1] == 0x103d)
+            && (primaryCode == 4158)
+        )  // if previous medial is Wa medial, only Ha medial will followed, no
+        // other medial followed
+            true
+        else !(((medialStack[medialCount - 1] == 0x103b) && (primaryCode == 0x103c)) // if previous medial Ya medial and then Ra medial followed
+                || ((medialStack[medialCount - 1] == 0x103c) && (primaryCode == 0x103b)) // if previous medial is Ra medial and then Ya medial followed
+                || ((medialStack[medialCount - 1] == 0x103b) && (primaryCode == 0x103b)) // if previous medial is Ya medial and then Ya medial followed
+                || ((medialStack[medialCount - 1] == 0x103c) && (primaryCode == 0x103c)))
+        // if previous medial is Ra medial and then Ra medial followed
+        // if All condition is passed, medial is valid :D Bravo
+    }
 
-	private boolean getFlagMedial(InputConnection ic) {
-		CharSequence getText = ic.getTextBeforeCursor(2, 0);
-		int beforeLength = 0;
-		int currentLength = 1;
-		int i = 2;
-		if (getText == null) {
-			getText = "";
-		}
-		int current = getText.charAt(0);
-		// checking medial and store medial to stack orderly
-		// till to Consonant or word sperator or till at the start of input box
-		while (!(isConsonant(current) || MyIME.isWordSeparator(current))
-				&& (beforeLength != currentLength) && (isMynMedial(current))) {
-			medialCount++;
-			pushMedialStack(current);//
-			swapMedial = true;
-			swapConsonant = true;
-			i++;
-			beforeLength = currentLength;
-			getText = ic.getTextBeforeCursor(i, 0);
-			currentLength = getText.length();// set current length
-												// of new
-			current = Integer.valueOf(getText.charAt(0));
+    private fun isOthers(primaryCode: Int): Boolean {
+        when (primaryCode) {
+            0x102b, 0x102c, 0x1037, 0x1038 -> return true
+        }
+        return false
+    }
 
-		}
-		Log.d("getMedialFlag", "MedialCount = " + medialCount);
-		if (isConsonant(current)) {
+    private fun isConsonant(primaryCode: Int): Boolean {
+        return (primaryCode > 4095) && (primaryCode < 4130)
+                || ((primaryCode > 4185) && (primaryCode < 4190))
+    }
 
-			return true;
+    private fun isMynMedial(primaryCode: Int): Boolean {
+        return (primaryCode > 0x103a) && (primaryCode < 0x103f)
+    }
 
-		}
+    private fun isMonMedial(primaryCode: Int): Boolean {
+        return (primaryCode > 0x103a) && (primaryCode < 0x1061)
+    }
 
-		if ((!isMynMedial(current)) && (!isConsonant(current))) {
-			swapMedial = false;
-			swapConsonant = false;
-			medialCount = 0;
-			stackPointer = 0;
-			return false;
-
-		}
-		if (beforeLength == currentLength) {
-			swapMedial = false;
-			swapConsonant = false;
-			medialCount = 0;
-			stackPointer = 0;
-			return false;
-		}
-		return true;
-	}
-
-	private void pushMedialStack(Integer current) {
-		// TODO Auto-generated method stub
-		stack[stackPointer] = current;
-		stackPointer++;
-
-	}
-
-	private String reorder_e_vowel(int primaryCode, InputConnection ic) {
-		ic.deleteSurroundingText(1, 0);
-		char[] reorderChars = { (char) primaryCode, (char) E_VOWEL };
-		String reorderString = String.valueOf(reorderChars);
-		return reorderString;
-	}
-
-	private boolean isValidMedial(int primaryCode) {
-
-		if (!swapConsonant)// if no previous consonant, it is invalid
-			return false;
-		else if (!swapMedial)// if no previous medial, no need to check it is
-								// valid
-			return true;
-		else if (medialCount > 2)// only 3 times of medial;
-			return false;
-		else if (medialStack[medialCount - 1] == 4158)// if previous medial is
-														// Ha medial, no other
-														// medial followed
-			return false;
-		else if ((medialStack[medialCount - 1] == 4157)
-				&& (primaryCode == 4158))
-			// if previous medial is Wa medial, only Ha madial will followed, no
-			// other medial followed
-			return true;
-		else if (((medialStack[medialCount - 1] == 4155) && (primaryCode == 4156))
-				// if previous medial Ya medial and then Ra medial followed
-				|| ((medialStack[medialCount - 1] == 4156) && (primaryCode == 4155))
-				// if previous medial is Ra medial and then Ya medial followed
-				|| ((medialStack[medialCount - 1] == 4155) && (primaryCode == 4155))
-				// if previous medial is Ya medial and then Ya medial followed
-				|| ((medialStack[medialCount - 1] == 4156) && (primaryCode == 4156)))
-			// if previous medial is Ra medial and then Ra medial followed
-			return false;
-		// if All condition is passed, medial is valid :D Bravo
-		return true;
-	}
-
-	private boolean isOthers(int primaryCode) {
-		switch (primaryCode) {
-		case 4139:
-		case 4140:
-		case 4151:
-		case 4152:
-			return true;
-		}
-		return false;
-	}
-
-	private boolean isConsonant(int primaryCode) {
-		if ((primaryCode > 4095) && (primaryCode < 4130)
-				|| ((primaryCode > 4185) && (primaryCode < 4190))) {
-			return true;
-		} else
-			return false;
-
-	}
-
-	private boolean isMynMedial(int primaryCode) {
-		if ((primaryCode > 4154) && (primaryCode < 4159)) {
-			return true;
-		} else
-			return false;
-	}
-
-	private boolean isMonMedial(int primaryCode) {
-		if ((primaryCode > 4189) && (primaryCode < 4193)) {
-			return true;
-		} else
-			return false;
-	}
-
-	public void handleMonMoneySym(InputConnection ic) {
-		char temp[] = { 4114, 4153, 4096, 4145, 4125, 4154 };
-		ic.commitText(String.valueOf(temp), 1);
-
-	}
-
+    fun handleMonMoneySym(ic: InputConnection) {
+        val temp = charArrayOf(
+            0x1012.toChar(),
+            0x1039.toChar(),
+            0x1000.toChar(),
+            0x1031.toChar(),
+            0x101d.toChar(),
+            0x103a.toChar()
+        )
+        ic.commitText(String(temp), 1)
+    }
 }

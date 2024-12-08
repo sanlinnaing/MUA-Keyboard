@@ -1,12 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.sanlin.mkeyboard"
-    android:versionCode="9"
-    android:versionName="2.3" >
-
-    <uses-sdk
-        android:minSdkVersion="11"
-        android:targetSdkVersion="21" />
+    android:versionCode="10"
+    android:versionName="2.4" >
 
     <application
         android:allowBackup="true"
@@ -15,6 +11,7 @@
         android:theme="@style/AppTheme" >
         <service
             android:name=".MyIME"
+            android:exported="true"
             android:label="@string/my_ime"
             android:permission="android.permission.BIND_INPUT_METHOD" >
             <meta-data
@@ -28,6 +25,7 @@
 
         <activity
             android:name=".ImePreferences"
+            android:exported="true"
             android:label="@string/settings_name" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

@@ -3,7 +3,10 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/MUA-Keyboard.iml" filepath="$PROJECT_DIR$/MUA-Keyboard.iml" />
-      <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/MUA-Keyboard.app.iml" filepath="$PROJECT_DIR$/.idea/modules/app/MUA-Keyboard.app.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/MUA-Keyboard.app.androidTest.iml" filepath="$PROJECT_DIR$/.idea/modules/app/MUA-Keyboard.app.androidTest.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/MUA-Keyboard.app.main.iml" filepath="$PROJECT_DIR$/.idea/modules/app/MUA-Keyboard.app.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/MUA-Keyboard.app.unitTest.iml" filepath="$PROJECT_DIR$/.idea/modules/app/MUA-Keyboard.app.unitTest.iml" />
     </modules>
   </component>
 </project>
