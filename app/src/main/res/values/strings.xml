@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Myanmar Unicode Area Keyboard</string>
+    <string name="keyboard_name">Key Mandalar</string>
+    <string name="vibration_feedback">Vibration Feedback</string>
+    <string name="keyboard_theme">Keyboard Theme</string>
+    <string name="key_press_sound">Key press Sound</string>
+    <string name="test_keyboard_input">Test keyboard input</string>
+</resources>

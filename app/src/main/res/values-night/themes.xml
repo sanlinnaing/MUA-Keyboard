@@ -1,0 +1,25 @@
+<resources>
+    <!-- Base application theme. -->
+    <style name="Theme.KeyMandalar" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+        <item name="colorBackground">@color/black</item> <!-- Optional override -->
+        <item name="android:windowBackground">?attr/colorBackground</item>
+        <!-- Primary brand color. -->
+        <item name="colorPrimary">@color/purple_200</item>
+        <item name="colorPrimaryVariant">@color/purple_700</item>
+        <item name="colorOnPrimary">@color/black</item>
+        <!-- Secondary brand color. -->
+        <item name="colorSecondary">@color/teal_200</item>
+        <item name="colorSecondaryVariant">@color/teal_200</item>
+        <item name="colorOnSecondary">@color/black</item>
+        <!-- Status bar color. -->
+        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
+        <!-- Customize your theme here. -->
+    </style>
+    <style name="KeyboardKeyStyle">
+        <item name="android:textColor">#ffffff</item>
+        <item name="android:background">#222222</item>
+        <item name="android:textSize">18sp</item>
+
+    </style>
+
+</resources>

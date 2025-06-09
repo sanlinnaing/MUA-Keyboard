@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Keyboard xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:mkey="http://schemas.android.com/apk/res-auto"
+    mkey:defaultKeyWidth="9.8%p"
+    mkey:horizontalGap="0.2%p"
+    mkey:verticalGap="5px"
+    mkey:defaultKeyHeight="60dp">
+
+    <!-- Row 1 -->
+    <Row>
+        <Key mkey:keyLabel="Q" mkey:keyCode="0x71"  mkey:popupCharacters="666443"/>
+        <Key mkey:keyLabel="W" mkey:keyCode="0x77" />
+        <Key mkey:keyLabel="E" mkey:keyCode="0x65" />
+        <Key mkey:keyLabel="R" mkey:keyCode="0x72" />
+        <Key mkey:keyLabel="T" mkey:keyCode="0x74" />
+        <Key mkey:keyLabel="Y" mkey:keyCode="0x79" />
+        <Key mkey:keyLabel="U" mkey:keyCode="0x75" />
+        <Key mkey:keyLabel="I" mkey:keyCode="0x69" />
+        <Key mkey:keyLabel="O" mkey:keyCode="0x6F" />
+        <Key mkey:keyLabel="P" mkey:keyCode="0x70" />
+    </Row>
+
+    <!-- Row 2 -->
+    <Row>
+        <Key mkey:keyLabel="A" mkey:keyCode="0x61" mkey:popupCharacters="àáâäæãåā" />
+        <Key mkey:keyLabel="S" mkey:keyCode="0x73" />
+        <Key mkey:keyLabel="D" mkey:keyCode="0x64" />
+        <Key mkey:keyLabel="F" mkey:keyCode="0x66"  mkey:popupCharacters="67854"/>
+        <Key mkey:keyLabel="G" mkey:keyCode="0x67"  mkey:popupCharacters="23411"/>
+        <Key mkey:keyLabel="H" mkey:keyCode="0x68" />
+        <Key mkey:keyLabel="J" mkey:keyCode="0x6A" />
+        <Key mkey:keyLabel="K" mkey:keyCode="0x6B" />
+        <Key mkey:keyLabel="L" mkey:keyCode="0x6C" mkey:popupCharacters="12345"/>
+    </Row>
+
+    <!-- Row 3 -->
+    <Row>
+        <Key mkey:keyLabel="⇧" mkey:isModifier="true" mkey:keyCode="0xFFFF" />
+        <Key mkey:keyLabel="Z" mkey:keyCode="0x7A" />
+        <Key mkey:keyLabel="X" mkey:keyCode="0x78" />
+        <Key mkey:keyLabel="C" mkey:keyCode="0x63" />
+        <Key mkey:keyLabel="V" mkey:keyCode="0x76" />
+        <Key mkey:keyLabel="B" mkey:keyCode="0x62" />
+        <Key mkey:keyLabel="N" mkey:keyCode="0x6E" />
+        <Key mkey:keyLabel="M" mkey:keyCode="0x6D"  mkey:popupCharacters="8888"/>
+        <Key mkey:keyLabel="⌫" mkey:keyCode="0xFF08" />
+    </Row>
+
+    <!-- Row 4 -->
+    <Row android:rowEdgeFlags="bottom">
+        <Key mkey:keyLabel="123" mkey:isModifier="true" mkey:keyCode="0xF001" mkey:keyWidth="15%p" />
+        <Key mkey:keyLabel="," mkey:keyCode="0x2C" mkey:keyWidth="10%p" />
+        <Key mkey:keyLabel=" " mkey:keyCode="0x20" mkey:keyWidth="40%p" />
+        <Key mkey:keyLabel="." mkey:keyCode="0x2E" mkey:keyWidth="10%p" />
+        <Key mkey:keyLabel="↵" mkey:keyCode="0x0A" mkey:keyWidth="15%p" />
+    </Row>
+
+</Keyboard>
+
+

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <attr name="colorBackground" format="color" />
+    <declare-styleable name="Key">
+        <attr name="keyLabel" format="string" />
+        <attr name="keyCode" format="integer" />
+        <attr name="keyWidth" format="string" />
+        <attr name="keyHeight" format="string" />
+        <attr name="keyIcon" format="reference" />
+        <attr name="isModifier" format="boolean" />
+        <attr name="flickDirections" format="string" />
+        <attr name="popupCharacters" format="string" />
+    </declare-styleable>
+    <declare-styleable name="Keyboard">
+        <attr name="defaultKeyWidth" format="string" />
+        <attr name="defaultKeyHeight" format="string" />
+        <attr name="verticalGap" format="string" />
+        <attr name="horizontalGap" format="string" />
+    </declare-styleable>
+</resources>
