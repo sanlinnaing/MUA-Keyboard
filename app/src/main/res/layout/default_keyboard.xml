@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.sanlin.mkeyboard.MyKeyboardView
+<com.sanlin.mkeyboard.view.MuaKeyboardView
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/keyboard"
-    android:layout_width="wrap_content"
-    android:layout_height="match_parent"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
     android:layout_alignParentBottom="true"
-   	
-    android:keyPreviewLayout ="@layout/preview"
-    android:keyBackground="@drawable/samplekeybackground"
-    android:background="#162916"
-    
+    app:keyBackground="@drawable/samplekeybackground"
+    app:keyTextColor="#FFFFFF"
+    app:keyTextSize="24sp"
+    app:hintTextColor="#888888"
+    app:hintTextSize="12sp"
+    android:background="#1B1B1B"
 />
-<!-- android.inputmethodservice.KeyboardView
-android:keyTextColor="#000000" -->
