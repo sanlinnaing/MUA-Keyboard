@@ -70,9 +70,9 @@ A Myanmar Unicode-compliant Android Input Method Editor (IME) supporting multipl
 |----|-------|---------|--------|
 | M-01 | No Unit Tests | - | ⏳ PENDING - Character reordering needs tests |
 | M-02 | Magic Unicode Numbers | BamarKeyboard.kt, etc. | ✅ DONE - MyanmarUnicode constants created |
-| M-03 | TODO Comments | Multiple | ⏳ PARTIAL - Some cleanup done |
-| M-04 | Excessive Logging | Various | ⏳ PARTIAL - Some cleanup done |
-| M-05 | HTTP URL | ime_preferences.xml | ⏳ PENDING |
+| M-03 | TODO Comments | Multiple | ✅ DONE - Cleaned up |
+| M-04 | Excessive Logging | Various | ✅ DONE - Removed all Log.d statements |
+| M-05 | HTTP URL | ime_preferences.xml | ✅ DONE - Already using HTTPS |
 
 ### LOW (Nice to Have)
 
@@ -114,15 +114,15 @@ A Myanmar Unicode-compliant Android Input Method Editor (IME) supporting multipl
 | 3.4 | Convert MyConfig.java to Kotlin (object) | ✅ Done (KeyboardConfig.kt) |
 | 3.5 | Convert ImePreferences.java to Kotlin | ⏳ Pending |
 
-### Epic 4: Code Quality (Priority: MEDIUM) ⏳ PARTIAL
+### Epic 4: Code Quality (Priority: MEDIUM) ✅ COMPLETED
 
 | Task | Description | Status |
 |------|-------------|--------|
 | 4.1 | Create Unicode constants file for Myanmar characters | ✅ Done (MyanmarUnicode.kt) |
-| 4.2 | Remove TODO/auto-generated comments | ⏳ Partial |
-| 4.3 | Add BuildConfig.DEBUG checks for logging | ⏳ Partial |
-| 4.4 | Remove commented-out code | ⏳ Partial |
-| 4.5 | Fix HTTP to HTTPS in preferences | ⏳ Pending |
+| 4.2 | Remove TODO/auto-generated comments | ✅ Done |
+| 4.3 | Remove verbose debug logging | ✅ Done (removed all Log.d statements) |
+| 4.4 | Remove commented-out code | ✅ Done |
+| 4.5 | Fix HTTP to HTTPS in preferences | ✅ Done (already HTTPS) |
 
 ### Epic 5: Testing (Priority: MEDIUM) ⏳ PENDING
 
@@ -260,7 +260,7 @@ A Myanmar Unicode-compliant Android Input Method Editor (IME) supporting multipl
 | ID | Task | Priority | Status |
 |----|------|----------|--------|
 | T-01 | Unit Tests for Character Reordering | MEDIUM | Not Started |
-| T-02 | Remove Remaining TODO Comments | LOW | Partial |
+| T-02 | Remove Remaining TODO Comments | LOW | ✅ Done |
 | T-03 | Enable ProGuard for Release | LOW | Not Started |
 | T-04 | Complete Kotlin Migration | LOW | ~80% Complete |
 | T-05 | Add Instrumentation Tests | LOW | Not Started |
