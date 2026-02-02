@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.sanlin.mkeyboard.view.MuaKeyboardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/keyboard"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_alignParentBottom="true"
+    app:keyBackground="@drawable/light_background"
+    app:keyTextColor="#000000"
+    app:keyTextSize="24sp"
+    app:hintTextColor="#666666"
+    app:hintTextSize="12sp"
+    android:background="#E8E8EE"
+/>
