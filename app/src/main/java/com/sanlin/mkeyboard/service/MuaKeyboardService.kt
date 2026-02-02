@@ -3,7 +3,6 @@ package com.sanlin.mkeyboard.service
 import android.inputmethodservice.InputMethodService
 import android.os.Build
 import android.os.IBinder
-import android.util.Log
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
@@ -435,8 +434,6 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener {
             return
         }
 
-        Log.d("MuaKeyboardService", "onKey: primaryCode=$primaryCode, sound=${KeyboardConfig.isSoundOn()}, isRepeat=$isRepeat")
-
         // Only play sound and haptic on first press, not on repeats
         if (!isRepeat) {
             if (KeyboardConfig.isSoundOn()) {
@@ -462,13 +459,10 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener {
                 handleSymByLocale()
             }
             Key.KEYCODE_MODE_CHANGE -> {
-                Log.d("MuaKeyboardService", "switch Symbol key")
                 handleSymByLocale()
             }
             Key.KEYCODE_MYANMAR_DELETE -> {
-                Log.d("MuaKeyboardService", "Myanmar/Shan Delete key code")
                 if (KeyboardConfig.isPrimeBookOn()) {
-                    Log.d("MuaKeyboardService", "Prime Book on")
                     currentInputHandler.handleDelete(ic, DeleteHandler.isEndOfText(ic))
                 } else {
                     DeleteHandler.deleteChar(ic)
@@ -495,13 +489,10 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener {
             }
             else -> {
                 var code = primaryCode.toChar()
-                Log.d("MuaKeyboardService", "handle shift: $code")
                 if (Character.isLetter(code) && caps) {
-                    Log.d("MuaKeyboardService", "Capital letters")
                     code = Character.toUpperCase(code)
                 }
                 var cText = code.toString()
-                Log.d("MuaKeyboardService", "cText: $cText")
 
                 // Check for double-tap on Myanmar keyboard
                 val localeId = getLocaleId()
@@ -560,7 +551,6 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener {
 
                 // Use input handler for language-specific processing
                 cText = if (localeId in 2..7) {
-                    Log.d("MuaKeyboardService", "Using input handler for locale $localeId")
                     currentInputHandler.handleInput(primaryCode, ic)
                 } else {
                     cText
@@ -575,7 +565,6 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener {
     }
 
     private fun handleDeleteKey(ic: InputConnection) {
-        Log.d("MuaKeyboardService", "Delete key code double tap")
         if (currentInputHandler is BamarInputHandler && KeyboardConfig.isPrimeBookOn() && KeyboardConfig.isDoubleTap()) {
             (currentInputHandler as BamarInputHandler).handleSingleDelete(ic)
         } else {
@@ -640,7 +629,6 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener {
 
     override fun onKeyLongPress(keyCode: Int, event: KeyEvent?): Boolean {
         if (keyCode == Key.KEYCODE_DONE) {
-            Log.d("MuaKeyboardService", "Enter key is long press")
             return true
         }
         return super.onKeyLongPress(keyCode, event)

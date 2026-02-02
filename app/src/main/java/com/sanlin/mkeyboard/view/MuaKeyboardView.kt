@@ -7,7 +7,6 @@ import android.os.Handler
 import android.os.Looper
 import android.os.Message
 import android.util.AttributeSet
-import android.util.Log
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
@@ -33,7 +32,6 @@ open class MuaKeyboardView @JvmOverloads constructor(
     var keyboard: Keyboard?
         get() = _keyboard
         set(value) {
-            Log.d(TAG, "Setting keyboard: keys=${value?.keys?.size}, width=${value?.getWidth()}, height=${value?.getHeight()}")
             _keyboard = value
             requestLayout()
             invalidate()
@@ -87,7 +85,6 @@ open class MuaKeyboardView @JvmOverloads constructor(
 
     // Handler message types
     private companion object {
-        private const val TAG = "MuaKeyboardView"
         const val MSG_REPEAT = 1
         const val MSG_LONGPRESS = 2
     }
@@ -152,12 +149,8 @@ open class MuaKeyboardView @JvmOverloads constructor(
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val keyboard = _keyboard
         if (keyboard != null) {
-            val width = keyboard.getWidth()
-            val height = keyboard.getHeight()
-            Log.d(TAG, "onMeasure: keyboard width=$width, height=$height, keys=${keyboard.keys.size}")
-            setMeasuredDimension(width, height)
+            setMeasuredDimension(keyboard.getWidth(), keyboard.getHeight())
         } else {
-            Log.d(TAG, "onMeasure: keyboard is null")
             super.onMeasure(widthMeasureSpec, heightMeasureSpec)
         }
     }
@@ -165,13 +158,7 @@ open class MuaKeyboardView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        val keyboard = _keyboard
-        if (keyboard == null) {
-            Log.d(TAG, "onDraw: keyboard is null, not drawing")
-            return
-        }
-
-        Log.d(TAG, "onDraw: drawing ${keyboard.keys.size} keys")
+        val keyboard = _keyboard ?: return
 
         // Draw each key
         for (key in keyboard.keys) {
@@ -449,7 +436,6 @@ open class MuaKeyboardView @JvmOverloads constructor(
         // Set up long press detection for popup keyboard (only need popupCharacters)
         // Also set up long press for space key to show input method picker
         if (!key.popupCharacters.isNullOrEmpty() || primaryCode == 32) {  // 32 = space
-            Log.d(TAG, "handleTouchDown: scheduling long press for key=${key.label}, popupCharacters=${key.popupCharacters}, code=$primaryCode")
             handler.sendMessageDelayed(
                 handler.obtainMessage(MSG_LONGPRESS, key),
                 longPressTimeout
@@ -574,8 +560,6 @@ open class MuaKeyboardView @JvmOverloads constructor(
      * Handle long press for popup keyboard or special keys like space.
      */
     private fun handleLongPress(key: Key) {
-        Log.d(TAG, "handleLongPress: key=${key.label}, popupCharacters=${key.popupCharacters}")
-
         // Cancel key repeat if active
         handler.removeMessages(MSG_REPEAT)
         repeatKey = null
@@ -583,7 +567,6 @@ open class MuaKeyboardView @JvmOverloads constructor(
         // Check if it's the space key - show input method picker
         val primaryCode = if (key.codes.isNotEmpty()) key.codes[0] else 0
         if (primaryCode == 32) {  // 32 = space
-            Log.d(TAG, "handleLongPress: space key - calling onSpaceLongPress")
             // Dismiss key preview
             keyPreviewPopup?.dismiss()
             // Reset key state
@@ -597,12 +580,10 @@ open class MuaKeyboardView @JvmOverloads constructor(
 
         // For other keys, show popup keyboard if they have popup characters
         if (key.popupCharacters.isNullOrEmpty()) {
-            Log.d(TAG, "handleLongPress: popupCharacters is null or empty, returning")
             return
         }
 
         // Show popup keyboard
-        Log.d(TAG, "handleLongPress: calling showPopupKeyboard")
         showPopupKeyboard(key)
     }
 
@@ -611,11 +592,8 @@ open class MuaKeyboardView @JvmOverloads constructor(
      * Uses direct canvas drawing instead of PopupWindow for IME compatibility.
      */
     private fun showPopupKeyboard(key: Key) {
-        Log.d(TAG, "showPopupKeyboard: key=${key.label}, popupCharacters=${key.popupCharacters}")
         val popupChars = key.popupCharacters ?: return
         if (popupChars.isEmpty()) return
-
-        Log.d(TAG, "showPopupKeyboard: creating popup with ${popupChars.length} characters")
 
         // Dismiss key preview
         keyPreviewPopup?.dismiss()
@@ -663,7 +641,6 @@ open class MuaKeyboardView @JvmOverloads constructor(
         popupX = popupX.coerceIn(popupPadding, (width - popupTotalWidth - popupPadding).coerceAtLeast(popupPadding))
 
         miniKeyboardOnScreen = true
-        Log.d(TAG, "showPopupKeyboard: popup at x=$popupX, y=$popupY, width=$popupTotalWidth, height=$popupKeyHeight")
 
         // Redraw to show popup
         invalidate()

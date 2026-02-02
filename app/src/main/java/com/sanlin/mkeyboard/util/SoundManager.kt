@@ -62,7 +62,6 @@ object SoundManager {
 
             // If no custom sounds, use click for all or fall back to ToneGenerator
             if (!hasClickSound) {
-                Log.d(TAG, "No custom sounds found, using ToneGenerator")
                 useToneGenerator = true
                 initToneGenerator()
             } else {
@@ -74,7 +73,6 @@ object SoundManager {
             }
 
             isInitialized = true
-            Log.d(TAG, "SoundManager initialized, useToneGenerator=$useToneGenerator")
 
         } catch (e: Exception) {
             Log.e(TAG, "Failed to initialize SoundPool, using ToneGenerator", e)
@@ -93,20 +91,17 @@ object SoundManager {
             // Look up resource ID by name at runtime
             val resId = context.resources.getIdentifier(soundName, "raw", context.packageName)
             if (resId == 0) {
-                Log.d(TAG, "Sound resource not found: $soundName")
                 return false
             }
 
             val soundId = soundPool?.load(context, resId, 1) ?: 0
             if (soundId > 0) {
                 onLoaded(soundId)
-                Log.d(TAG, "Loaded sound: $soundName with id $soundId")
                 true
             } else {
                 false
             }
         } catch (e: Exception) {
-            Log.d(TAG, "Failed to load sound: $soundName", e)
             false
         }
     }

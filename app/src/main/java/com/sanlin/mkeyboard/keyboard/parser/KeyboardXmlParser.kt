@@ -45,8 +45,6 @@ object KeyboardXmlParser {
         var defaultHorizontalGap = 0
         var defaultVerticalGap = 0
 
-        Log.d(TAG, "Starting parse of keyboard resource $xmlLayoutResId, displayWidth=$displayWidth, defaultHeight=$defaultKeyHeight")
-
         try {
             var event = parser.eventType
             while (event != XmlPullParser.END_DOCUMENT) {
@@ -75,8 +73,6 @@ object KeyboardXmlParser {
                                     defaultHorizontalGap,
                                     defaultVerticalGap
                                 )
-
-                                Log.d(TAG, "Keyboard attrs: width=$defaultKeyWidth, height=$defaultKeyHeight, hGap=$defaultHorizontalGap, vGap=$defaultVerticalGap")
                             }
                             TAG_ROW -> {
                                 currentX = 0
@@ -105,7 +101,6 @@ object KeyboardXmlParser {
                                     row.keys.add(key)
                                     // Move to the end of this key
                                     currentX = key.x + key.width
-                                    Log.d(TAG, "Key: label=${key.label}, x=${key.x}, width=${key.width}, endX=${key.x + key.width}, displayWidth=$displayWidth")
                                 }
                             }
                         }
@@ -119,20 +114,14 @@ object KeyboardXmlParser {
                                         val lastKey = row.keys.last()
                                         val hasRightEdge = (lastKey.edgeFlags and Key.EDGE_RIGHT) != 0
                                         val currentEndX = lastKey.x + lastKey.width
-                                        Log.d(TAG, "Row end: lastKey.label=${lastKey.label}, x=${lastKey.x}, width=${lastKey.width}, endX=$currentEndX, displayWidth=$displayWidth, hasRightEdge=$hasRightEdge, edgeFlags=${lastKey.edgeFlags}")
                                         if (hasRightEdge && currentEndX < displayWidth) {
-                                            val oldWidth = lastKey.width
                                             lastKey.width = displayWidth - lastKey.x
-                                            Log.d(TAG, "Extended right edge key from width=$oldWidth to width=${lastKey.width}")
                                         } else if (currentEndX < displayWidth) {
                                             // Even without right edge flag, extend the last key to fill gap
-                                            val oldWidth = lastKey.width
                                             lastKey.width = displayWidth - lastKey.x
-                                            Log.d(TAG, "Extended last key (no right edge flag) from width=$oldWidth to width=${lastKey.width}")
                                         }
                                     }
                                     keyboard.addRow(row)
-                                    Log.d(TAG, "Added row with ${row.keys.size} keys at Y=$currentY, height=${row.defaultHeight}")
                                     currentY += row.defaultHeight + row.verticalGap
                                 }
                                 currentRow = null
@@ -149,7 +138,6 @@ object KeyboardXmlParser {
         }
 
         keyboard.finalizeParsing()
-        Log.d(TAG, "Finished parsing: ${keyboard.keys.size} keys, totalHeight=${keyboard.totalHeight}, totalWidth=${keyboard.totalWidth}")
     }
 
     /**
@@ -237,7 +225,6 @@ object KeyboardXmlParser {
             key.edgeFlags = parseEdgeFlags(edgeFlags)
         }
 
-        Log.d(TAG, "Parsed key: codes=${key.codes.contentToString()}, label=${key.label}, x=${key.x}, y=${key.y}, w=${key.width}, h=${key.height}")
         return key
     }
 
@@ -253,46 +240,32 @@ object KeyboardXmlParser {
         base: Int,
         defaultValue: Int
     ): Int {
-        val value = parser.getAttributeValue(namespace, attribute)
-        Log.d(TAG, "getDimensionOrFraction: attr=$attribute, value=$value, namespace=$namespace")
-
-        if (value == null) {
-            Log.d(TAG, "  -> value is null, returning default=$defaultValue")
-            return defaultValue
-        }
+        val value = parser.getAttributeValue(namespace, attribute) ?: return defaultValue
 
         // Try to get as resource ID first
         val resId = parser.getAttributeResourceValue(namespace, attribute, 0)
-        Log.d(TAG, "  -> resId=$resId (0x${Integer.toHexString(resId)})")
 
         if (resId != 0) {
             try {
                 // Check if it's a fraction or dimension
                 val typedValue = TypedValue()
                 res.getValue(resId, typedValue, true)
-                Log.d(TAG, "  -> typedValue.type=${typedValue.type}, TYPE_FRACTION=${TypedValue.TYPE_FRACTION}, TYPE_DIMENSION=${TypedValue.TYPE_DIMENSION}")
 
                 return when (typedValue.type) {
                     TypedValue.TYPE_FRACTION -> {
                         // Fraction - calculate based on base
                         val fraction = typedValue.getFraction(base.toFloat(), base.toFloat())
-                        Log.d(TAG, "  -> fraction result=${fraction.toInt()} (base=$base)")
                         fraction.toInt()
                     }
                     TypedValue.TYPE_DIMENSION -> {
                         // Dimension
-                        val dimValue = res.getDimensionPixelSize(resId)
-                        Log.d(TAG, "  -> dimension result=$dimValue")
-                        dimValue
+                        res.getDimensionPixelSize(resId)
                     }
                     else -> {
                         // Try as dimension anyway
                         try {
-                            val dimValue = res.getDimensionPixelSize(resId)
-                            Log.d(TAG, "  -> fallback dimension result=$dimValue")
-                            dimValue
+                            res.getDimensionPixelSize(resId)
                         } catch (e: Exception) {
-                            Log.w(TAG, "Failed to get dimension for $attribute, using default", e)
                             defaultValue
                         }
                     }
@@ -306,19 +279,15 @@ object KeyboardXmlParser {
         // Parse percentage value like "10%p"
         if (value.endsWith("%p")) {
             val percent = value.dropLast(2).toFloatOrNull() ?: return defaultValue
-            val result = (base * percent / 100).toInt()
-            Log.d(TAG, "  -> percentage result=$result (percent=$percent, base=$base)")
-            return result
+            return (base * percent / 100).toInt()
         }
 
         // Parse raw numeric value
         val numericValue = value.toFloatOrNull()
         if (numericValue != null) {
-            Log.d(TAG, "  -> numeric result=${numericValue.toInt()}")
             return numericValue.toInt()
         }
 
-        Log.d(TAG, "  -> no match, returning default=$defaultValue")
         return defaultValue
     }
 

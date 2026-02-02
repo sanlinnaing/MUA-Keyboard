@@ -47,7 +47,6 @@ object HapticManager {
             }
 
             isInitialized = true
-            Log.d(TAG, "HapticManager initialized, hasVibrator=${vibrator?.hasVibrator()}")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to initialize HapticManager", e)
         }
@@ -70,7 +69,6 @@ object HapticManager {
         val vib = vibrator ?: return
 
         if (!vib.hasVibrator()) {
-            Log.d(TAG, "Device does not have vibrator")
             return
         }
 
