@@ -1,0 +1,27 @@
+# Build outputs
+build/
+app/build/
+.gradle/
+
+# IDE files
+.idea/
+*.iml
+local.properties
+
+# Generated files
+app/release/
+app/debug/
+*.apk
+*.aab
+
+# Signing keys (sensitive)
+*.keystore
+*.jks
+keystore.properties
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
