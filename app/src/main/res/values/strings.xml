@@ -38,7 +38,11 @@
     <string name="double_tap_summ">Enable/Disable Double-Tap typing</string>
     <string name="hint_keylabel_title">Hint Key Label</string>
     <string name="hint_keylabel_summ">Show/Hide Double Tap and Pop up hint key label</string>
-    
-    
+    <string name="proximity_correction_title">Proximity Touch Correction</string>
+    <string name="proximity_correction_summ">Register nearby keys when touch is slightly off target</string>
+    <string name="haptic_feedback_title">Haptic Feedback</string>
+    <string name="haptic_feedback_summ">Vibrate on key press</string>
+    <string name="haptic_strength_title">Vibration Strength</string>
+    <string name="haptic_strength_summ">Adjust vibration intensity</string>
 
 </resources>

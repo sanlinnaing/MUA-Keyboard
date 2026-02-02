@@ -1,16 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.sanlin.mkeyboard"
-    android:versionCode="10"
-    android:versionName="2.4" >
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Required for haptic feedback -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name"
         android:theme="@style/AppTheme" >
+        <!-- New MUA Keyboard Service (non-deprecated APIs) -->
         <service
-            android:name=".MyIME"
+            android:name=".service.MuaKeyboardService"
             android:exported="true"
             android:label="@string/my_ime"
             android:permission="android.permission.BIND_INPUT_METHOD" >
@@ -24,13 +25,18 @@
         </service>
 
         <activity
-            android:name=".ImePreferences"
+            android:name=".settings.ImePreferencesActivity"
             android:exported="true"
+            android:theme="@style/AppTheme.NoActionBar"
             android:label="@string/settings_name" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Allow system to open settings from keyboard settings -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
         

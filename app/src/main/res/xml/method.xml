@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <input-method xmlns:android="http://schemas.android.com/apk/res/android"
-    android:settingsActivity="com.sanlin.mkeyboard.ImePreferences" >
+    android:settingsActivity="com.sanlin.mkeyboard.settings.ImePreferencesActivity" >
 
     <subtype
         android:icon="@drawable/icon_en_gb"

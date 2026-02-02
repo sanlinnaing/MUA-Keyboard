@@ -28,9 +28,26 @@
         android:title="@string/play_sound_title" />
     <CheckBoxPreference
         android:defaultValue="true"
+        android:key="haptic_feedback"
+        android:summary="@string/haptic_feedback_summ"
+        android:title="@string/haptic_feedback_title" />
+    <SeekBarPreference
+        android:key="haptic_strength"
+        android:title="@string/haptic_strength_title"
+        android:summary="@string/haptic_strength_summ"
+        android:defaultValue="25"
+        android:max="100"
+        android:dependency="haptic_feedback" />
+    <CheckBoxPreference
+        android:defaultValue="true"
         android:key="hint_keylabel"
         android:summary="@string/hint_keylabel_summ"
         android:title="@string/hint_keylabel_title" />
+    <CheckBoxPreference
+        android:defaultValue="true"
+        android:key="proximity_correction"
+        android:summary="@string/proximity_correction_summ"
+        android:title="@string/proximity_correction_title" />
 
     <EditTextPreference
         android:key="test_keyboard_text"
@@ -50,7 +67,7 @@
     <Preference android:title="@string/faq" >
         <intent
             android:action="android.intent.action.VIEW"
-            android:data="http://www.facebook.com/groups/mmUnicode" />
+            android:data="https://www.facebook.com/groups/mmUnicode" />
     </Preference>
 
 </PreferenceScreen>
