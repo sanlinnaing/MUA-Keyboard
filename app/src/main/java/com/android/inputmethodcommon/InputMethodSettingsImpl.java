@@ -18,6 +18,8 @@
  * This is a part of the inputmethod-common static Java library.
  * The original source code can be found at frameworks/opt/inputmethodcommon of Android Open Source
  * Project.
+ *
+ * Updated to use AndroidX Preference classes.
  */
 
 package com.android.inputmethodcommon;
@@ -25,14 +27,15 @@ package com.android.inputmethodcommon;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.drawable.Drawable;
-import android.preference.Preference;
-import android.preference.Preference.OnPreferenceClickListener;
-import android.preference.PreferenceScreen;
 import android.provider.Settings;
 import android.text.TextUtils;
 import android.view.inputmethod.InputMethodInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.view.inputmethod.InputMethodSubtype;
+import android.widget.Toast;
+
+import androidx.preference.Preference;
+import androidx.preference.PreferenceScreen;
 
 import java.util.List;
 
@@ -51,7 +54,7 @@ import java.util.List;
     /**
      * Initialize internal states of this object.
      * @param context the context for this application.
-     * @param prefScreen a PreferenceScreen of PreferenceActivity or PreferenceFragment.
+     * @param prefScreen a PreferenceScreen of PreferenceFragmentCompat.
      * @return true if this application is an IME and has two or more subtypes, false otherwise.
      */
     public boolean init(final Context context, final PreferenceScreen prefScreen) {
@@ -62,24 +65,34 @@ import java.util.List;
             return false;
         }
         mSubtypeEnablerPreference = new Preference(context);
-        mSubtypeEnablerPreference
-                .setOnPreferenceClickListener(new OnPreferenceClickListener() {
-                    @Override
-                    public boolean onPreferenceClick(Preference preference) {
-                        final CharSequence title = getSubtypeEnablerTitle(context);
-                        final Intent intent =
-                                new Intent(Settings.ACTION_INPUT_METHOD_SUBTYPE_SETTINGS);
-                        intent.putExtra(Settings.EXTRA_INPUT_METHOD_ID, mImi.getId());
-                        if (!TextUtils.isEmpty(title)) {
-                            intent.putExtra(Intent.EXTRA_TITLE, title);
-                        }
-                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK
-                                | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
-                                | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                        context.startActivity(intent);
-                        return true;
-                    }
-                });
+        mSubtypeEnablerPreference.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+            @Override
+            public boolean onPreferenceClick(Preference preference) {
+                // Check if keyboard is enabled before allowing language selection
+                if (!isInputMethodEnabled(context, mImm, mImi)) {
+                    Toast.makeText(context,
+                        "Please enable this keyboard in system settings first",
+                        Toast.LENGTH_LONG).show();
+                    // Open IME settings so user can enable the keyboard
+                    Intent enableIntent = new Intent(Settings.ACTION_INPUT_METHOD_SETTINGS);
+                    enableIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    context.startActivity(enableIntent);
+                    return true;
+                }
+
+                final CharSequence title = getSubtypeEnablerTitle(context);
+                final Intent intent = new Intent(Settings.ACTION_INPUT_METHOD_SUBTYPE_SETTINGS);
+                intent.putExtra(Settings.EXTRA_INPUT_METHOD_ID, mImi.getId());
+                if (!TextUtils.isEmpty(title)) {
+                    intent.putExtra(Intent.EXTRA_TITLE, title);
+                }
+                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+                        | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
+                        | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                context.startActivity(intent);
+                return true;
+            }
+        });
         prefScreen.addPreference(mSubtypeEnablerPreference);
         updateSubtypeEnabler();
         return true;
@@ -94,6 +107,21 @@ import java.util.List;
             }
         }
         return null;
+    }
+
+    /**
+     * Check if this input method is enabled in system settings.
+     * Language selection only works for enabled input methods.
+     */
+    private static boolean isInputMethodEnabled(Context context, InputMethodManager imm, InputMethodInfo imi) {
+        if (imm == null || imi == null) return false;
+        final List<InputMethodInfo> enabledImis = imm.getEnabledInputMethodList();
+        for (InputMethodInfo enabledImi : enabledImis) {
+            if (enabledImi.getId().equals(imi.getId())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static String getEnabledSubtypesLabel(
@@ -112,6 +140,7 @@ import java.util.List;
         }
         return sb.toString();
     }
+
     /**
      * {@inheritDoc}
      */
@@ -178,16 +207,29 @@ import java.util.List;
     }
 
     public void updateSubtypeEnabler() {
-        if (mSubtypeEnablerPreference != null) {
+        if (mSubtypeEnablerPreference != null && mContext != null) {
+            // Refresh InputMethodManager to get latest data
+            mImm = (InputMethodManager) mContext.getSystemService(Context.INPUT_METHOD_SERVICE);
+            mImi = getMyImi(mContext, mImm);
+
             if (mSubtypeEnablerTitleRes != 0) {
                 mSubtypeEnablerPreference.setTitle(mSubtypeEnablerTitleRes);
             } else if (!TextUtils.isEmpty(mSubtypeEnablerTitle)) {
                 mSubtypeEnablerPreference.setTitle(mSubtypeEnablerTitle);
             }
-            final String summary = getEnabledSubtypesLabel(mContext, mImm, mImi);
-            if (!TextUtils.isEmpty(summary)) {
-                mSubtypeEnablerPreference.setSummary(summary);
+
+            // Check if keyboard is enabled
+            if (!isInputMethodEnabled(mContext, mImm, mImi)) {
+                mSubtypeEnablerPreference.setSummary("Enable this keyboard first");
+            } else {
+                final String summary = getEnabledSubtypesLabel(mContext, mImm, mImi);
+                if (!TextUtils.isEmpty(summary)) {
+                    mSubtypeEnablerPreference.setSummary(summary);
+                } else {
+                    mSubtypeEnablerPreference.setSummary("");
+                }
             }
+
             if (mSubtypeEnablerIconRes != 0) {
                 mSubtypeEnablerPreference.setIcon(mSubtypeEnablerIconRes);
             } else if (mSubtypeEnablerIcon != null) {

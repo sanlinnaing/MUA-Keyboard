@@ -18,6 +18,8 @@
  * This is a part of the inputmethod-common static Java library.
  * The original source code can be found at frameworks/opt/inputmethodcommon of Android Open Source
  * Project.
+ *
+ * Updated to use AndroidX PreferenceFragmentCompat.
  */
 
 package com.android.inputmethodcommon;
@@ -25,18 +27,21 @@ package com.android.inputmethodcommon;
 import android.content.Context;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
-import android.preference.PreferenceFragment;
+import android.os.Handler;
+import android.os.Looper;
+
+import androidx.preference.PreferenceFragmentCompat;
 
 /**
  * This is a helper class for an IME's settings preference fragment. It's recommended for every
  * IME to have its own settings preference fragment which inherits this class.
  */
-public abstract class InputMethodSettingsFragment extends PreferenceFragment
+public abstract class InputMethodSettingsFragment extends PreferenceFragmentCompat
         implements InputMethodSettingsInterface {
     private final InputMethodSettingsImpl mSettings = new InputMethodSettingsImpl();
+
     @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+    public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
         final Context context = getActivity();
         setPreferenceScreen(getPreferenceManager().createPreferenceScreen(context));
         mSettings.init(context, getPreferenceScreen());
@@ -96,6 +101,31 @@ public abstract class InputMethodSettingsFragment extends PreferenceFragment
     @Override
     public void onResume() {
         super.onResume();
+        refreshSubtypeEnabler();
+    }
+
+    /**
+     * Refresh the subtype enabler preference to show current enabled subtypes.
+     * Call this when returning from system settings.
+     */
+    public void refreshSubtypeEnabler() {
+        final Handler handler = new Handler(Looper.getMainLooper());
+
+        // Update immediately
         mSettings.updateSubtypeEnabler();
+
+        // The system may take time to persist subtype changes, so we refresh
+        // multiple times with increasing delays to catch the update
+        final int[] delays = {200, 500, 1000, 2000};
+        for (final int delay : delays) {
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    if (isAdded()) {
+                        mSettings.updateSubtypeEnabler();
+                    }
+                }
+            }, delay);
+        }
     }
 }

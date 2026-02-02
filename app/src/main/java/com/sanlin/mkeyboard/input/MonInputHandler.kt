@@ -1,98 +1,96 @@
-package com.sanlin.mkeyboard
+package com.sanlin.mkeyboard.input
 
-import android.content.Context
 import android.view.inputmethod.InputConnection
+import com.sanlin.mkeyboard.config.KeyboardConfig
+import com.sanlin.mkeyboard.unicode.MyanmarUnicode
+import com.sanlin.mkeyboard.util.DeleteHandler
 
-class MonKeyboard : MyKeyboard {
-    private val DOT_BELOW = 0x1037
-    private val ASAT = 0x103a
-    private val NYA = 0x1009
-    private val UU = 0x1025
-    private val II_VOWEL = 0x102e
-    private val AA_VOWEL = 0x102c
-    private val SS = 0x1005
-    private val YA_MEDIAL = 0x103b
-    private val E_VOWEL = 0x1031
-    private val VIRAMA = 0x1039
+/**
+ * Input handler for Mon text.
+ * Handles E-vowel reordering, Mon-specific autocorrections, and smart delete.
+ */
+class MonInputHandler(
+    private val wordSeparators: String = ""
+) : InputHandler {
+
     private var stackPointer = 0
     private val stack = IntArray(3)
     private var swapConsonant = false
     private var medialCount: Short = 0
     private var swapMedial = false
     private var swapMonMedial = false
-    private var EVOWEL_VIRAMA = false
+    private var evowelVirama = false
     private val medialStack = IntArray(3)
 
-    constructor(context: Context?, xmlLayoutResId: Int) : super(context, xmlLayoutResId)
-
-    constructor(
-        context: Context?, layoutTemplateResId: Int,
-        characters: CharSequence?, columns: Int, horizontalPadding: Int
-    ) : super(
-        context, layoutTemplateResId, characters, columns,
-        horizontalPadding
-    )
-
-    fun handleMonInput(primaryCode: Int, ic: InputConnection): String {
+    override fun handleInput(primaryCode: Int, ic: InputConnection): String {
         var charBeforeCursor = ic.getTextBeforeCursor(1, 0)
         val charCodeBeforeCursor: Int
-        // if getTextBeforeCursor return null, issues on version 1.1
+
         if (charBeforeCursor == null) {
             charBeforeCursor = ""
         }
-        if (charBeforeCursor.length > 0) charCodeBeforeCursor = charBeforeCursor.get(0).code
-        else {
+
+        if (charBeforeCursor.isNotEmpty()) {
+            charCodeBeforeCursor = charBeforeCursor[0].code
+        } else {
             swapConsonant = false
             medialCount = 0
             swapMedial = false
             swapMonMedial = false
-            EVOWEL_VIRAMA = false
-            return primaryCode.toChar().toString() // else it is the first
-        } // character no need to
+            evowelVirama = false
+            return primaryCode.toChar().toString()
+        }
 
-        // reorder
         // tha + ra_medial = aw vowel autocorrect
-        if ((charCodeBeforeCursor == 0x101e) && (primaryCode == 0x103c)) {
+        if ((charCodeBeforeCursor == MyanmarUnicode.SA) && (primaryCode == MyanmarUnicode.RA_MEDIAL)) {
             ic.deleteSurroundingText(1, 0)
-            return 0x1029.toChar().toString()
+            return MyanmarUnicode.O.toChar().toString()
         }
+
         // dot_above + au vowel = au vowel + dot_above autocorrect
-        if ((charCodeBeforeCursor == 0x1036) && (primaryCode == 0x102f)) {
-            val temp = charArrayOf(0x102f.toChar(), 0x1036.toChar())
+        if ((charCodeBeforeCursor == MyanmarUnicode.ANUSVARA) && (primaryCode == MyanmarUnicode.U_VOWEL)) {
+            val temp = charArrayOf(MyanmarUnicode.U_VOWEL.toChar(), MyanmarUnicode.ANUSVARA.toChar())
             ic.deleteSurroundingText(1, 0)
             return String(temp)
         }
+
         // ss + ya_medial = za myint zwe autocorrect
-        if ((charCodeBeforeCursor == SS) && (primaryCode == YA_MEDIAL)) {
+        if ((charCodeBeforeCursor == MyanmarUnicode.CA) && (primaryCode == MyanmarUnicode.YA_MEDIAL)) {
             ic.deleteSurroundingText(1, 0)
-            return 0x1008.toChar().toString()
+            return MyanmarUnicode.JHA.toChar().toString()
         }
+
         // uu + aa_vowel = NYA + aa_vowel autocorrect
-        if ((charCodeBeforeCursor == UU) && (primaryCode == AA_VOWEL)) {
-            val temp = charArrayOf(NYA.toChar(), AA_VOWEL.toChar())
+        if ((charCodeBeforeCursor == MyanmarUnicode.U) && (primaryCode == MyanmarUnicode.AA)) {
+            val temp = charArrayOf(MyanmarUnicode.NYA.toChar(), MyanmarUnicode.AA.toChar())
             ic.deleteSurroundingText(1, 0)
             return String(temp)
         }
+
         // uu_vowel+ii_vowel = u autocorrect
-        if ((charCodeBeforeCursor == UU) && (primaryCode == II_VOWEL)) {
+        if ((charCodeBeforeCursor == MyanmarUnicode.U) && (primaryCode == MyanmarUnicode.II_VOWEL)) {
             ic.deleteSurroundingText(1, 0)
-            return 0x1026.toChar().toString() // U
+            return MyanmarUnicode.UU.toChar().toString()
         }
+
         // uu_vowel+asat autocorrect
-        if ((charCodeBeforeCursor == UU) && (primaryCode == ASAT)) {
-            val temp = charArrayOf(NYA.toChar(), ASAT.toChar())
+        if ((charCodeBeforeCursor == MyanmarUnicode.U) && (primaryCode == MyanmarUnicode.ASAT)) {
+            val temp = charArrayOf(MyanmarUnicode.NYA.toChar(), MyanmarUnicode.ASAT.toChar())
             ic.deleteSurroundingText(1, 0)
             return String(temp)
         }
+
         // asat + dot below to reorder dot below + asat
-        if ((charCodeBeforeCursor == ASAT) && (primaryCode == DOT_BELOW)) {
-            val temp = charArrayOf(DOT_BELOW.toChar(), ASAT.toChar())
+        if ((charCodeBeforeCursor == MyanmarUnicode.ASAT) && (primaryCode == MyanmarUnicode.DOT_BELOW)) {
+            val temp = charArrayOf(MyanmarUnicode.DOT_BELOW.toChar(), MyanmarUnicode.ASAT.toChar())
             ic.deleteSurroundingText(1, 0)
             return String(temp)
         }
-        if (MyConfig.isPrimeBookOn()) {
+
+        if (KeyboardConfig.isPrimeBookOn()) {
             return handleMonPrimeBook(primaryCode, ic, charCodeBeforeCursor)
         }
+
         return primaryCode.toChar().toString()
     }
 
@@ -101,55 +99,57 @@ class MonKeyboard : MyKeyboard {
         charCodeBeforeCursor: Int
     ): String {
         // E vowel + cons + virama + cons
-        if ((primaryCode == VIRAMA) and (swapConsonant)) {
+        if ((primaryCode == MyanmarUnicode.VIRAMA) and (swapConsonant)) {
             swapConsonant = false
-            EVOWEL_VIRAMA = true
+            evowelVirama = true
             return primaryCode.toChar().toString()
         }
 
         // if e_vowel renew checking flag if
-        if (primaryCode == E_VOWEL) {
+        if (primaryCode == MyanmarUnicode.E_VOWEL) {
             var outText = primaryCode.toChar().toString()
             if (isConsonant(charCodeBeforeCursor)) {
-                val temp = charArrayOf(0x200b.toChar(), primaryCode.toChar()) // ZWSP added
+                val temp = charArrayOf(MyanmarUnicode.ZWSP.toChar(), primaryCode.toChar())
                 outText = String(temp)
             }
             swapConsonant = false
             medialCount = 0
             swapMedial = false
             swapMonMedial = false
-            EVOWEL_VIRAMA = false
+            evowelVirama = false
             return outText
         }
 
-        if (EVOWEL_VIRAMA) {
+        if (evowelVirama) {
             if (isConsonant(primaryCode)) {
                 swapConsonant = true
                 ic.deleteSurroundingText(2, 0)
                 val reorderChars = charArrayOf(
-                    VIRAMA.toChar(), primaryCode.toChar(),
-                    E_VOWEL.toChar()
+                    MyanmarUnicode.VIRAMA.toChar(), primaryCode.toChar(),
+                    MyanmarUnicode.E_VOWEL.toChar()
                 )
                 val reorderString = String(reorderChars)
-                EVOWEL_VIRAMA = false
+                evowelVirama = false
                 return reorderString
             } else {
-                EVOWEL_VIRAMA = false
+                evowelVirama = false
             }
         }
+
         if (isOthers(primaryCode)) {
             swapConsonant = false
             medialCount = 0
             swapMedial = false
             swapMonMedial = false
-            EVOWEL_VIRAMA = false
+            evowelVirama = false
             return primaryCode.toChar().toString()
         }
+
         // if no previous E_vowel, no need to check Reorder.
-        if (charCodeBeforeCursor != E_VOWEL) {
+        if (charCodeBeforeCursor != MyanmarUnicode.E_VOWEL) {
             return primaryCode.toChar().toString()
         }
-        // Next other instructions will run charCodeBeforeCursor == E_VOWEL.
+
         // if input character is consonant and consonant e_vowel swapped,
         // no need to reorder. con+vowel+con
         if (isConsonant(primaryCode) && (swapConsonant)) {
@@ -159,6 +159,7 @@ class MonKeyboard : MyKeyboard {
             medialCount = 0
             return primaryCode.toChar().toString()
         }
+
         if (isConsonant(primaryCode)) {
             if (!swapConsonant) {
                 swapConsonant = true
@@ -168,10 +169,8 @@ class MonKeyboard : MyKeyboard {
                 return primaryCode.toChar().toString()
             }
         }
-        if (isMynMedial(primaryCode)) {
-            // delete e_vowel and create Type character + e_vowel
-            // (reordering)
 
+        if (isMynMedial(primaryCode)) {
             if (isValidMedial(primaryCode)) {
                 medialStack[medialCount.toInt()] = primaryCode
                 medialCount++
@@ -179,6 +178,7 @@ class MonKeyboard : MyKeyboard {
                 return reorderEVowel(primaryCode, ic)
             }
         }
+
         if (isMonMedial(primaryCode)) {
             if ((!swapMonMedial) && (!swapMedial)) {
                 swapMonMedial = true
@@ -187,52 +187,51 @@ class MonKeyboard : MyKeyboard {
             swapMonMedial = false
             return primaryCode.toChar().toString()
         }
+
         return primaryCode.toChar().toString()
     }
 
-    fun handleMonDelete(ic: InputConnection) {
-        if (MyIME.isEndofText(ic)) {
+    override fun handleDelete(ic: InputConnection, isEndOfText: Boolean) {
+        if (isEndOfText) {
             handleSingleDelete(ic)
         } else {
-            handelMonWordDelete(ic)
+            handleWordDelete(ic)
         }
     }
 
-    private fun handelMonWordDelete(ic: InputConnection) {
+    private fun handleWordDelete(ic: InputConnection) {
         var i = 1
         var getText = ic.getTextBeforeCursor(1, 0)
-        // null error fixed on issue of version 1.1
-        if ((getText == null) || (getText.length <= 0)) {
-            return  // fixed on issue of version 1.2, cause=(getText is null) solution=(if getText is null, return)
+
+        if (getText == null || getText.isEmpty()) {
+            return
         }
+
         // for Emotion delete
-        if (Character.isLowSurrogate(getText[0])
-            || Character.isHighSurrogate(getText[0])
-        ) {
+        if (Character.isLowSurrogate(getText[0]) || Character.isHighSurrogate(getText[0])) {
             ic.deleteSurroundingText(2, 0)
             return
         }
+
         var current: Int
         var beforeLength = 0
         var currentLength = 1
 
         current = getText[0].code
-        // word or separator
-        while (!(isConsonant(current) || MyIME.isWordSeparator(current))
-            && (beforeLength != currentLength)
-        ) {
+        while (!(isConsonant(current) || isWordSeparator(current)) && (beforeLength != currentLength)) {
             i++
             beforeLength = currentLength
             getText = ic.getTextBeforeCursor(i, 0)
             currentLength = getText!!.length
             current = getText[0].code
         }
+
         if (beforeLength == currentLength) {
             ic.deleteSurroundingText(1, 0)
         } else {
             getText = ic.getTextBeforeCursor(i + 1, 0)
             val virama = getText!![0].code
-            if (virama == VIRAMA) {
+            if (virama == MyanmarUnicode.VIRAMA) {
                 ic.deleteSurroundingText(i + 1, 0)
             } else {
                 ic.deleteSurroundingText(i, 0)
@@ -248,13 +247,14 @@ class MonKeyboard : MyKeyboard {
         var getText = ic.getTextBeforeCursor(1, 0)
         val firstChar: Int
         val secPrev: Int
-        // if getTextBeforeCursor return null, issues on version 1.1
+
         if (getText == null) {
             getText = ""
         }
-        if (getText.length > 0) {
-            firstChar = getText.get(0).code
-            if (firstChar == E_VOWEL) {
+
+        if (getText.isNotEmpty()) {
+            firstChar = getText[0].code
+            if (firstChar == MyanmarUnicode.E_VOWEL) {
                 // Need to initialize FLAG
                 swapConsonant = false
                 swapMedial = false
@@ -264,6 +264,7 @@ class MonKeyboard : MyKeyboard {
                 // 2nd previous character
                 getText = ic.getTextBeforeCursor(2, 0)
                 secPrev = getText!![0].code
+
                 // Mon Medial + E_VOWEL
                 if (isMonMedial(secPrev)) {
                     val getThirdText = ic.getTextBeforeCursor(3, 0)
@@ -276,7 +277,7 @@ class MonKeyboard : MyKeyboard {
                             swapConsonant = true
                         }
                     }
-                } else if (isMynMedial(secPrev)) { // Myn Medial + E_VOWEL
+                } else if (isMynMedial(secPrev)) {
                     getFlagMedial(ic)
                     if (swapConsonant) {
                         deleteCharBeforeEvowel(ic)
@@ -290,7 +291,6 @@ class MonKeyboard : MyKeyboard {
                             medialStack[j] = stack[stackPointer]
                             stackPointer--
                         }
-                        // nul point exception cause medialCount = -1
                         if (medialCount < 0) {
                             medialCount = 0
                         }
@@ -299,10 +299,9 @@ class MonKeyboard : MyKeyboard {
                     }
                 } else if (isConsonant(secPrev)) {
                     val getThirdText = ic.getTextBeforeCursor(3, 0)
-
                     var thirdChar = 0
                     if (getThirdText!!.length == 3) thirdChar = getThirdText[0].code
-                    if (thirdChar == VIRAMA) {
+                    if (thirdChar == MyanmarUnicode.VIRAMA) {
                         deleteTwoCharBeforeEvowel(ic)
                     } else {
                         deleteCharBeforeEvowel(ic)
@@ -317,29 +316,23 @@ class MonKeyboard : MyKeyboard {
                 // If not E_Vowel
                 getText = ic.getTextBeforeCursor(2, 0)
                 secPrev = getText!![0].code
-                if (secPrev == E_VOWEL) swapConsonant = true
-                // ic.deleteSurroundingText(1, 0);
-                MyIME.deleteHandle(ic)
+                if (secPrev == MyanmarUnicode.E_VOWEL) swapConsonant = true
+                DeleteHandler.deleteChar(ic)
             }
         } else {
-            // It is the start of input text box
             ic.deleteSurroundingText(1, 0)
         }
         stackPointer = 0
-        val logText = StringBuilder()
-        for (k in 0 until medialCount) {
-            logText.append(medialStack[k].toChar().toString()).append(" | ")
-        }
     }
 
     private fun deleteCharBeforeEvowel(ic: InputConnection) {
         ic.deleteSurroundingText(2, 0)
-        ic.commitText(E_VOWEL.toChar().toString(), 1)
+        ic.commitText(MyanmarUnicode.E_VOWEL.toChar().toString(), 1)
     }
 
     private fun deleteTwoCharBeforeEvowel(ic: InputConnection) {
         ic.deleteSurroundingText(3, 0)
-        ic.commitText(E_VOWEL.toChar().toString(), 1)
+        ic.commitText(MyanmarUnicode.E_VOWEL.toChar().toString(), 1)
     }
 
     private fun getFlagMedial(ic: InputConnection) {
@@ -350,22 +343,22 @@ class MonKeyboard : MyKeyboard {
         if (getText == null) {
             getText = ""
         }
-        var current = getText.get(0).code
-        // checking medial and store medial to stack orderly
-        // till to Consonant or word separator or till at the start of input box
-        while (!(isConsonant(current) || MyIME.isWordSeparator(current))
+        var current = getText[0].code
+
+        while (!(isConsonant(current) || isWordSeparator(current))
             && (beforeLength != currentLength) && (isMynMedial(current))
         ) {
             medialCount++
-            pushMedialStack(current) //
+            pushMedialStack(current)
             swapMedial = true
             swapConsonant = true
             i++
             beforeLength = currentLength
             getText = ic.getTextBeforeCursor(i, 0)
-            currentLength = getText!!.length // set current length of new
+            currentLength = getText!!.length
             current = getText[0].code
         }
+
         if (isConsonant(current)) {
             return
         }
@@ -377,6 +370,7 @@ class MonKeyboard : MyKeyboard {
             stackPointer = 0
             return
         }
+
         if (beforeLength == currentLength) {
             swapMedial = false
             swapConsonant = false
@@ -392,64 +386,66 @@ class MonKeyboard : MyKeyboard {
 
     private fun reorderEVowel(primaryCode: Int, ic: InputConnection): String {
         ic.deleteSurroundingText(1, 0)
-        val reorderChars = charArrayOf(primaryCode.toChar(), E_VOWEL.toChar())
+        val reorderChars = charArrayOf(primaryCode.toChar(), MyanmarUnicode.E_VOWEL.toChar())
         return String(reorderChars)
     }
 
     private fun isValidMedial(primaryCode: Int): Boolean {
-        return if (!swapConsonant)  // if no previous consonant, it is invalid
-            false
-        else if (!swapMedial)  // if no previous medial, no need to check it is
-        // valid
-            true
-        else if (medialCount > 2)  // only 3 times of medial;
-            false
-        else if (medialStack[medialCount - 1] == 0x103e)  // if previous medial is
-        // Ha medial, no other
-        // medial followed
-            false
-        else if ((medialStack[medialCount - 1] == 0x103d)
-            && (primaryCode == 4158)
-        )  // if previous medial is Wa medial, only Ha medial will followed, no
-        // other medial followed
-            true
-        else !(((medialStack[medialCount - 1] == 0x103b) && (primaryCode == 0x103c)) // if previous medial Ya medial and then Ra medial followed
-                || ((medialStack[medialCount - 1] == 0x103c) && (primaryCode == 0x103b)) // if previous medial is Ra medial and then Ya medial followed
-                || ((medialStack[medialCount - 1] == 0x103b) && (primaryCode == 0x103b)) // if previous medial is Ya medial and then Ya medial followed
-                || ((medialStack[medialCount - 1] == 0x103c) && (primaryCode == 0x103c)))
-        // if previous medial is Ra medial and then Ra medial followed
-        // if All condition is passed, medial is valid :D Bravo
+        return when {
+            !swapConsonant -> false
+            !swapMedial -> true
+            medialCount > 2 -> false
+            medialStack[medialCount - 1] == MyanmarUnicode.HA_MEDIAL -> false
+            (medialStack[medialCount - 1] == MyanmarUnicode.WA_MEDIAL) && (primaryCode == MyanmarUnicode.HA_MEDIAL) -> true
+            else -> !(((medialStack[medialCount - 1] == MyanmarUnicode.YA_MEDIAL) && (primaryCode == MyanmarUnicode.RA_MEDIAL))
+                    || ((medialStack[medialCount - 1] == MyanmarUnicode.RA_MEDIAL) && (primaryCode == MyanmarUnicode.YA_MEDIAL))
+                    || ((medialStack[medialCount - 1] == MyanmarUnicode.YA_MEDIAL) && (primaryCode == MyanmarUnicode.YA_MEDIAL))
+                    || ((medialStack[medialCount - 1] == MyanmarUnicode.RA_MEDIAL) && (primaryCode == MyanmarUnicode.RA_MEDIAL)))
+        }
     }
 
     private fun isOthers(primaryCode: Int): Boolean {
-        when (primaryCode) {
-            0x102b, 0x102c, 0x1037, 0x1038 -> return true
+        return when (primaryCode) {
+            MyanmarUnicode.TALL_AA, MyanmarUnicode.AA, MyanmarUnicode.DOT_BELOW, MyanmarUnicode.VISARGA -> true
+            else -> false
         }
-        return false
     }
 
     private fun isConsonant(primaryCode: Int): Boolean {
-        return (primaryCode > 4095) && (primaryCode < 4130)
-                || ((primaryCode > 4185) && (primaryCode < 4190))
+        return (primaryCode > 4095) && (primaryCode < 4130) ||
+                ((primaryCode > 4185) && (primaryCode < 4190))
     }
 
     private fun isMynMedial(primaryCode: Int): Boolean {
-        return (primaryCode > 0x103a) && (primaryCode < 0x103f)
+        return (primaryCode > MyanmarUnicode.ASAT) && (primaryCode < 0x103f)
     }
 
     private fun isMonMedial(primaryCode: Int): Boolean {
-        return (primaryCode > 0x103a) && (primaryCode < 0x1061)
+        return (primaryCode > MyanmarUnicode.ASAT) && (primaryCode < 0x1061)
     }
 
-    fun handleMonMoneySym(ic: InputConnection) {
+    private fun isWordSeparator(code: Int): Boolean {
+        return wordSeparators.contains(code.toChar().toString())
+    }
+
+    override fun handleMoneySym(ic: InputConnection) {
         val temp = charArrayOf(
-            0x1012.toChar(),
-            0x1039.toChar(),
-            0x1000.toChar(),
-            0x1031.toChar(),
-            0x101d.toChar(),
-            0x103a.toChar()
+            MyanmarUnicode.DA.toChar(),
+            MyanmarUnicode.VIRAMA.toChar(),
+            MyanmarUnicode.KA.toChar(),
+            MyanmarUnicode.E_VOWEL.toChar(),
+            MyanmarUnicode.WA.toChar(),
+            MyanmarUnicode.ASAT.toChar()
         )
         ic.commitText(String(temp), 1)
+    }
+
+    override fun reset() {
+        swapConsonant = false
+        medialCount = 0
+        swapMedial = false
+        swapMonMedial = false
+        evowelVirama = false
+        stackPointer = 0
     }
 }

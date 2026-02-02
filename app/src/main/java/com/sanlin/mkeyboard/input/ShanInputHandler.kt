@@ -1,75 +1,88 @@
-package com.sanlin.mkeyboard
+package com.sanlin.mkeyboard.input
 
-import android.content.Context
 import android.view.inputmethod.InputConnection
+import com.sanlin.mkeyboard.config.KeyboardConfig
+import com.sanlin.mkeyboard.unicode.MyanmarUnicode
+import com.sanlin.mkeyboard.util.DeleteHandler
 
-class ShanKeyboard : MyKeyboard {
+/**
+ * Input handler for Shan text.
+ * Handles E-vowel reordering, Shan-specific autocorrections, and smart delete.
+ */
+class ShanInputHandler(
+    private val shanConsonants: String = ""
+) : InputHandler {
+
     private var swapConsonant = false
     private var swapMedial = false
-    private val MY_E = 0x1031
-    private val SH_E = 0x1084
-    private val ASAT = 0x103a
 
-    constructor(context: Context?, xmlLayoutResId: Int) : super(context, xmlLayoutResId)
-
-    constructor(
-        context: Context?, layoutTemplateResId: Int,
-        characters: CharSequence?, columns: Int, horizontalPadding: Int
-    ) : super(
-        context, layoutTemplateResId, characters, columns,
-        horizontalPadding
-    )
-
-    fun handleShanInputText(primaryCode: Int, ic: InputConnection): String {
+    override fun handleInput(primaryCode: Int, ic: InputConnection): String {
         var charBeforeCursor = ic.getTextBeforeCursor(1, 0)
-        if ((primaryCode == MY_E || primaryCode == SH_E)
-            && MyConfig.isPrimeBookOn()
+
+        // E vowel handling (both Myanmar E and Shan E)
+        if ((primaryCode == MyanmarUnicode.E_VOWEL || primaryCode == MyanmarUnicode.SHAN_E)
+            && KeyboardConfig.isPrimeBookOn()
         ) {
-            val temp = charArrayOf(0x200b.toChar(), primaryCode.toChar()) // ZWSP added
+            val temp = charArrayOf(MyanmarUnicode.ZWSP.toChar(), primaryCode.toChar())
             val outText = String(temp)
             swapConsonant = false
             swapMedial = false
             return outText
         }
-        // if getTextBeforeCursor return null, issues on version 1.1
+
         if (charBeforeCursor == null) {
             charBeforeCursor = ""
         }
+
         var charCodeBeforeCursor: Int? = null
-        if (charBeforeCursor.length > 0) charCodeBeforeCursor = charBeforeCursor[0].code
-        else {
+        if (charBeforeCursor.isNotEmpty()) {
+            charCodeBeforeCursor = charBeforeCursor[0].code
+        } else {
             return primaryCode.toChar().toString()
         }
-        if (charCodeBeforeCursor == ASAT && primaryCode == 0x1082) {
-            val temp = charArrayOf(0x1082.toChar(), ASAT.toChar())
+
+        // Asat + Shan Medial Wa reorder
+        if (charCodeBeforeCursor == MyanmarUnicode.ASAT && primaryCode == MyanmarUnicode.SHAN_MEDIAL_WA) {
+            val temp = charArrayOf(MyanmarUnicode.SHAN_MEDIAL_WA.toChar(), MyanmarUnicode.ASAT.toChar())
             ic.deleteSurroundingText(1, 0)
             return String(temp)
         }
-        if (charCodeBeforeCursor == 0x1086 && primaryCode == 0x1062) {
-            val temp = charArrayOf(0x1062.toChar(), 0x1086.toChar())
+
+        // Shan tone + vowel reorder
+        if (charCodeBeforeCursor == MyanmarUnicode.SHAN_TONE_2 && primaryCode == MyanmarUnicode.SHAN_COUNCIL_TONE_2) {
+            val temp = charArrayOf(MyanmarUnicode.SHAN_COUNCIL_TONE_2.toChar(), MyanmarUnicode.SHAN_TONE_2.toChar())
             ic.deleteSurroundingText(1, 0)
             return String(temp)
         }
-        if (charCodeBeforeCursor == 0x1030 && primaryCode == 0x102d) {
-            val temp = charArrayOf(0x102d.toChar(), 0x1030.toChar())
+
+        // UU vowel + I vowel reorder
+        if (charCodeBeforeCursor == MyanmarUnicode.UU_VOWEL && primaryCode == MyanmarUnicode.I_VOWEL) {
+            val temp = charArrayOf(MyanmarUnicode.I_VOWEL.toChar(), MyanmarUnicode.UU_VOWEL.toChar())
             ic.deleteSurroundingText(1, 0)
             return String(temp)
         }
-        if (charCodeBeforeCursor == 0x102f && primaryCode == 0x102d) {
-            val temp = charArrayOf(0x102d.toChar(), 0x102f.toChar())
+
+        // U vowel + I vowel reorder
+        if (charCodeBeforeCursor == MyanmarUnicode.U_VOWEL && primaryCode == MyanmarUnicode.I_VOWEL) {
+            val temp = charArrayOf(MyanmarUnicode.I_VOWEL.toChar(), MyanmarUnicode.U_VOWEL.toChar())
             ic.deleteSurroundingText(1, 0)
             return String(temp)
         }
-        if (MyConfig.isPrimeBookOn()) return handleShanTyping(primaryCode, ic)
+
+        if (KeyboardConfig.isPrimeBookOn()) {
+            return handleShanTyping(primaryCode, ic)
+        }
+
         return primaryCode.toChar().toString()
     }
 
     private fun handleShanTyping(primaryCode: Int, ic: InputConnection): String {
         var charBeforeCursor = ic.getTextBeforeCursor(1, 0)
-        // if getTextBeforeCursor return null, issues on version 1.1
+
         if (charBeforeCursor == null) {
             charBeforeCursor = ""
         }
+
         var charCodeBeforeCursor: Int? = null
 
         if (isOthers(primaryCode)) {
@@ -77,14 +90,17 @@ class ShanKeyboard : MyKeyboard {
             swapMedial = false
             return primaryCode.toChar().toString()
         }
-        if (charBeforeCursor.length > 0) charCodeBeforeCursor = charBeforeCursor[0].code
-        else {
+
+        if (charBeforeCursor.isNotEmpty()) {
+            charCodeBeforeCursor = charBeforeCursor[0].code
+        } else {
             swapConsonant = false
             swapMedial = false
             return primaryCode.toChar().toString()
         }
 
-        if ((charCodeBeforeCursor == MY_E || charCodeBeforeCursor == SH_E)) {
+        // Check for E vowel (Myanmar or Shan)
+        if ((charCodeBeforeCursor == MyanmarUnicode.E_VOWEL || charCodeBeforeCursor == MyanmarUnicode.SHAN_E)) {
             if (isConsonant(primaryCode)) {
                 if (!swapConsonant) {
                     swapConsonant = true
@@ -95,7 +111,7 @@ class ShanKeyboard : MyKeyboard {
                     return primaryCode.toChar().toString()
                 }
             }
-            if (primaryCode == ASAT) {
+            if (primaryCode == MyanmarUnicode.ASAT) {
                 if (swapConsonant) {
                     swapConsonant = false
                     return reorder(primaryCode, charCodeBeforeCursor, ic)
@@ -109,6 +125,7 @@ class ShanKeyboard : MyKeyboard {
                 }
             }
         }
+
         return primaryCode.toChar().toString()
     }
 
@@ -118,7 +135,7 @@ class ShanKeyboard : MyKeyboard {
 
     private fun isMedial(primaryCode: Int): Boolean {
         // medial Ya, Ra
-        return primaryCode == 0x103b || primaryCode == 0x103c
+        return primaryCode == MyanmarUnicode.YA_MEDIAL || primaryCode == MyanmarUnicode.RA_MEDIAL
     }
 
     private fun reorder(
@@ -130,26 +147,27 @@ class ShanKeyboard : MyKeyboard {
         return String(reorderChars)
     }
 
-    fun handleShanDelete(ic: InputConnection) {
-        if (MyIME.isEndofText(ic)) {
+    override fun handleDelete(ic: InputConnection, isEndOfText: Boolean) {
+        if (isEndOfText) {
             handleSingleDelete(ic)
         } else {
-            MyIME.deleteHandle(ic)
+            DeleteHandler.deleteChar(ic)
         }
     }
 
     private fun handleSingleDelete(ic: InputConnection) {
         var getText = ic.getTextBeforeCursor(1, 0)
-        // if getTextBeforeCursor return null, issues on version 1.1
+
         if (getText == null) {
             getText = ""
         }
 
         val firstChar: Int
         val secPrev: Int
+
         if (getText.isNotEmpty()) {
-            firstChar = getText.get(0).code
-            if (firstChar == MY_E || firstChar == SH_E) {
+            firstChar = getText[0].code
+            if (firstChar == MyanmarUnicode.E_VOWEL || firstChar == MyanmarUnicode.SHAN_E) {
                 // Need to initialize FLAG
                 swapConsonant = false
                 swapMedial = false
@@ -171,12 +189,12 @@ class ShanKeyboard : MyKeyboard {
                 secPrev = getText!![0].code
                 val getThirdText = ic.getTextBeforeCursor(3, 0)
                 var thirdChar = 0
-                if (getThirdText != null && getThirdText.length == 3) thirdChar =
-                    getThirdText[0].code
+                if (getThirdText != null && getThirdText.length == 3) thirdChar = getThirdText[0].code
 
-                if (secPrev == MY_E || secPrev == SH_E) swapConsonant = thirdChar != 0x200b
-                // ic.deleteSurroundingText(1, 0);
-                MyIME.deleteHandle(ic)
+                if (secPrev == MyanmarUnicode.E_VOWEL || secPrev == MyanmarUnicode.SHAN_E) {
+                    swapConsonant = thirdChar != MyanmarUnicode.ZWSP
+                }
+                DeleteHandler.deleteChar(ic)
             }
         } else {
             ic.deleteSurroundingText(1, 0)
@@ -189,16 +207,29 @@ class ShanKeyboard : MyKeyboard {
     }
 
     private fun isConsonant(primaryCode: Int): Boolean {
-        return MyIME.isShanConsonant(primaryCode)
+        return shanConsonants.contains(primaryCode.toChar().toString())
     }
 
+    /**
+     * Generate Shan vowel combination.
+     */
     fun shanVowel1(): String {
-        val outText = charArrayOf(4226.toChar(), 4154.toChar())
+        val outText = charArrayOf(0x10A2.toChar(), MyanmarUnicode.ASAT.toChar())
         return String(outText)
     }
 
-    fun handleShanMoneySym(ic: InputConnection) {
-        val temp = charArrayOf(0x1015.toChar(), 0x103b.toChar(), 0x1083.toChar(), 0x1038.toChar())
+    override fun handleMoneySym(ic: InputConnection) {
+        val temp = charArrayOf(
+            MyanmarUnicode.PA.toChar(),
+            MyanmarUnicode.YA_MEDIAL.toChar(),
+            MyanmarUnicode.SHAN_VOWEL_O.toChar(),
+            MyanmarUnicode.VISARGA.toChar()
+        )
         ic.commitText(String(temp), 1)
+    }
+
+    override fun reset() {
+        swapConsonant = false
+        swapMedial = false
     }
 }

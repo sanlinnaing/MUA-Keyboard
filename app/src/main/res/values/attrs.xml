@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Attributes for MuaKeyboardView -->
+    <declare-styleable name="MuaKeyboardView">
+        <!-- The background drawable for keys -->
+        <attr name="keyBackground" format="reference" />
+        <!-- The color of key text -->
+        <attr name="keyTextColor" format="color" />
+        <!-- The size of key text -->
+        <attr name="keyTextSize" format="dimension" />
+        <!-- The color of hint text (popup characters) -->
+        <attr name="hintTextColor" format="color" />
+        <!-- The size of hint text -->
+        <attr name="hintTextSize" format="dimension" />
+        <!-- The color of the text shadow -->
+        <attr name="shadowColor" format="color" />
+        <!-- The radius of the text shadow -->
+        <attr name="shadowRadius" format="dimension" />
+        <!-- The size of multi-character label text -->
+        <attr name="labelTextSize" format="dimension" />
+        <!-- The background drawable for key preview popup -->
+        <attr name="keyPreviewBackground" format="reference" />
+        <!-- The height of key preview popup -->
+        <attr name="keyPreviewHeight" format="dimension" />
+        <!-- The vertical offset for key preview -->
+        <attr name="keyPreviewOffset" format="dimension" />
+        <!-- The text size for key preview -->
+        <attr name="keyPreviewTextSize" format="dimension" />
+    </declare-styleable>
+</resources>
