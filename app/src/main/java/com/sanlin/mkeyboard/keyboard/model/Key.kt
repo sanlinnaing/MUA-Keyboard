@@ -87,6 +87,7 @@ data class Key(
         const val KEYCODE_MYANMAR_DELETE = 300000
         const val KEYCODE_MYANMAR_MONEY = 300001
         const val KEYCODE_SHAN_VOWEL = 42264154
+        const val KEYCODE_PUNCTUATION = -301  // Myanmar punctuation key (၊/။)
     }
 
     /**

@@ -29,19 +29,36 @@ import com.sanlin.mkeyboard.emoji.EmojiView
 import com.sanlin.mkeyboard.emoji.RecentEmojiManager
 import com.sanlin.mkeyboard.view.MuaKeyboardView
 import com.sanlin.mkeyboard.view.OnKeyboardActionListener
+import com.sanlin.mkeyboard.view.FlickKeyboardView
+import com.sanlin.mkeyboard.view.OnFlickKeyboardActionListener
+import com.sanlin.mkeyboard.keyboard.model.FlickKeyboard
+import com.sanlin.mkeyboard.keyboard.model.FlickKey
+import com.sanlin.mkeyboard.keyboard.model.FlickCharacter
+import com.sanlin.mkeyboard.keyboard.model.FlickDirection
 
 /**
  * Main Input Method Service for MUA Keyboard.
  * This service handles all keyboard interactions using the new non-deprecated components.
  */
-class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener {
+class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFlickKeyboardActionListener {
 
     private var kv: MuaKeyboardView? = null
+    private var flickKv: FlickKeyboardView? = null
+    private var flickKeyboard: FlickKeyboard? = null
     private var emojiView: EmojiView? = null
     private var keyboardContainer: FrameLayout? = null
     private var inputMethodManager: InputMethodManager? = null
     private var caps = false
     private var isEmojiMode = false
+    private var isFlickMode = false
+    private var wasFlickModeBeforeSymbol = false  // Track if we came from flick mode when entering symbol/emoji
+    private var lastMainSubtypeId = 1  // Track the last used main subtype (not symbol/emoji)
+
+    // Flick keyboard subtype ID
+    companion object {
+        private const val TAG = "MuaKeyboardService"
+        private const val FLICK_KEYBOARD_ID = 8
+    }
 
     // Keyboards
     private lateinit var enKeyboard: Keyboard
@@ -89,6 +106,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener {
         inputHandlers[5] = EnglishInputHandler() // SG Karen - pass-through
         inputHandlers[6] = EnglishInputHandler() // WP Karen - pass-through
         inputHandlers[7] = KarenInputHandler()
+        inputHandlers[FLICK_KEYBOARD_ID] = BamarInputHandler(wordSeparators) // Flick uses Bamar handler
     }
 
     override fun onInitializeInterface() {
@@ -101,9 +119,14 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener {
 
         shifted = false
         symbol = false
+
+        // Restore lastMainSubtypeId from preferences, or use current locale as fallback
+        val savedSubtypeId = sharedPref.getInt("last_main_subtype_id", -1)
+        lastMainSubtypeId = if (savedSubtypeId > 0) savedSubtypeId else getLocaleId()
+
         currentKeyboard = enKeyboard
-        currentKeyboard = getKeyboard(getLocaleId())
-        currentInputHandler = inputHandlers[getLocaleId()] ?: EnglishInputHandler()
+        currentKeyboard = getKeyboard(lastMainSubtypeId)
+        currentInputHandler = inputHandlers[lastMainSubtypeId] ?: EnglishInputHandler()
     }
 
     override fun onCreateInputView(): View {
@@ -164,6 +187,20 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener {
             // Add top margin for gap at top of keyboard
             layoutParams.topMargin = topPadding
             container.addView(keyboardView, layoutParams)
+        }
+
+        // Create flick keyboard view
+        flickKeyboard = FlickKeyboard(this)
+        flickKv = FlickKeyboardView(this).apply {
+            val layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT
+            )
+            layoutParams.topMargin = topPadding
+            visibility = View.GONE  // Initially hidden
+            setKeyboard(flickKeyboard!!)
+            setOnFlickKeyboardActionListener(this@MuaKeyboardService)
+            container.addView(this, layoutParams)
         }
 
         // Create emoji view
@@ -245,10 +282,13 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener {
      * Show the emoji view and hide the keyboard.
      */
     private fun showEmojiView() {
+        // Track if we came from flick mode
+        wasFlickModeBeforeSymbol = isFlickMode
         isEmojiMode = true
         kv?.visibility = View.GONE
+        flickKv?.visibility = View.GONE
         emojiView?.visibility = View.VISIBLE
-        // Set back button label based on current language
+        // Set back button label based on current language (will be ကခဂ if from flick mode)
         emojiView?.setBackButtonLabel(getBackButtonLabel())
     }
 
@@ -258,14 +298,52 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener {
     private fun hideEmojiView() {
         isEmojiMode = false
         emojiView?.visibility = View.GONE
+        // Return to the last used main subtype
+        if (lastMainSubtypeId == FLICK_KEYBOARD_ID || wasFlickModeBeforeSymbol) {
+            // Return to flick keyboard
+            flickKv?.visibility = View.VISIBLE
+            isFlickMode = true
+        } else {
+            // Return to standard keyboard with last main subtype
+            kv?.keyboard = getKeyboard(lastMainSubtypeId)
+            kv?.visibility = View.VISIBLE
+            isFlickMode = false
+        }
+        wasFlickModeBeforeSymbol = false
+    }
+
+    /**
+     * Show the flick keyboard and hide the standard keyboard.
+     */
+    private fun showFlickKeyboard() {
+        isFlickMode = true
+        kv?.visibility = View.GONE
+        emojiView?.visibility = View.GONE
+        flickKv?.visibility = View.VISIBLE
+        currentInputHandler = inputHandlers[FLICK_KEYBOARD_ID] ?: BamarInputHandler(wordSeparators)
+        currentInputHandler.reset()
+    }
+
+    /**
+     * Hide the flick keyboard and show the standard keyboard.
+     */
+    private fun hideFlickKeyboard() {
+        isFlickMode = false
+        flickKv?.visibility = View.GONE
+        emojiView?.visibility = View.GONE
         kv?.visibility = View.VISIBLE
     }
 
     /**
-     * Get the back button label based on current keyboard language.
+     * Get the back button label based on last used main keyboard language.
+     * When from flick mode, always return Myanmar label.
      */
     private fun getBackButtonLabel(): String {
-        return when (getLocaleId()) {
+        // If we came from flick mode, always show Myanmar label
+        if (isFlickMode || wasFlickModeBeforeSymbol || lastMainSubtypeId == FLICK_KEYBOARD_ID) {
+            return "ကခဂ"
+        }
+        return when (lastMainSubtypeId) {
             2 -> "ကခဂ"      // Burmese
             3 -> "ၵၶင"       // Shan
             4 -> "ကခဂ"      // Mon (uses Burmese script)
@@ -343,12 +421,70 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener {
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         setInputView(onCreateInputView())
+
+        // Restore the last used main subtype from preferences
+        val sharedPref = PreferenceManager.getDefaultSharedPreferences(this)
+        val savedSubtypeId = sharedPref.getInt("last_main_subtype_id", -1)
+        if (savedSubtypeId > 0) {
+            lastMainSubtypeId = savedSubtypeId
+            applySubtype(savedSubtypeId)
+        }
+    }
+
+    /**
+     * Apply the given subtype to show the correct keyboard.
+     */
+    private fun applySubtype(subtypeId: Int) {
+        // Handle flick keyboard subtype
+        if (subtypeId == FLICK_KEYBOARD_ID) {
+            isFlickMode = true
+            kv?.visibility = View.GONE
+            emojiView?.visibility = View.GONE
+            flickKv?.visibility = View.VISIBLE
+            currentInputHandler = inputHandlers[FLICK_KEYBOARD_ID] ?: BamarInputHandler(wordSeparators)
+            currentInputHandler.reset()
+            return
+        }
+
+        // For other subtypes, show standard keyboard
+        isFlickMode = false
+        flickKv?.visibility = View.GONE
+        emojiView?.visibility = View.GONE
+        kv?.visibility = View.VISIBLE
+
+        val newKeyboard = getKeyboard(subtypeId)
+        currentKeyboard = newKeyboard
+        currentInputHandler = inputHandlers[subtypeId] ?: EnglishInputHandler()
+        currentInputHandler.reset()
+
+        kv?.keyboard = newKeyboard
     }
 
     override fun onCurrentInputMethodSubtypeChanged(newSubtype: InputMethodSubtype) {
         super.onCurrentInputMethodSubtypeChanged(newSubtype)
 
         val subtypeId = newSubtype.extraValue.toIntOrNull() ?: 1
+
+        // Track the main subtype (this is the user-selected language subtype)
+        lastMainSubtypeId = subtypeId
+
+        // Persist to SharedPreferences
+        PreferenceManager.getDefaultSharedPreferences(this)
+            .edit()
+            .putInt("last_main_subtype_id", subtypeId)
+            .apply()
+
+        // Handle flick keyboard subtype
+        if (subtypeId == FLICK_KEYBOARD_ID) {
+            showFlickKeyboard()
+            return
+        }
+
+        // For other subtypes, hide flick and show standard keyboard
+        if (isFlickMode) {
+            hideFlickKeyboard()
+        }
+
         val newKeyboard = getKeyboard(subtypeId)
         currentKeyboard = newKeyboard
         currentInputHandler = inputHandlers[subtypeId] ?: EnglishInputHandler()
@@ -573,12 +709,30 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener {
     }
 
     private fun handleSymByLocale() {
-        val localeId = getLocaleId()
         if (!symbol) {
-            kv?.keyboard = getSymKeyboard(localeId)
+            // Entering symbol mode - use lastMainSubtypeId to get correct symbol keyboard
+            if (isFlickMode || lastMainSubtypeId == FLICK_KEYBOARD_ID) {
+                // Coming from flick keyboard - track it and show Myanmar symbol
+                wasFlickModeBeforeSymbol = true
+                flickKv?.visibility = View.GONE
+                kv?.visibility = View.VISIBLE
+                kv?.keyboard = getSymKeyboard(2)  // Use Myanmar symbol layout (locale 2)
+            } else {
+                kv?.keyboard = getSymKeyboard(lastMainSubtypeId)
+            }
             symbol = true
         } else {
-            kv?.keyboard = getKeyboard(localeId)
+            // Exiting symbol mode - return to last main subtype
+            if (wasFlickModeBeforeSymbol || lastMainSubtypeId == FLICK_KEYBOARD_ID) {
+                // Return to flick keyboard
+                kv?.visibility = View.GONE
+                flickKv?.visibility = View.VISIBLE
+                isFlickMode = true
+                wasFlickModeBeforeSymbol = false
+            } else {
+                kv?.keyboard = getKeyboard(lastMainSubtypeId)
+                isFlickMode = false
+            }
             symbol = false
         }
     }
@@ -657,7 +811,151 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener {
         inputMethodManager?.showInputMethodPicker()
     }
 
-    companion object {
-        private const val TAG = "MuaKeyboardService"
+    // ==================== OnFlickKeyboardActionListener Implementation ====================
+
+    override fun onFlickCharacter(character: FlickCharacter, direction: FlickDirection, key: FlickKey) {
+        val ic = currentInputConnection ?: return
+
+        // Ignore empty/placeholder keys
+        if (character.label.isEmpty() && character.code == 0) {
+            return
+        }
+
+        // Play sound and haptic feedback
+        if (KeyboardConfig.isSoundOn()) {
+            SoundManager.playClick(this, character.code)
+        }
+        if (KeyboardConfig.isHapticEnabled()) {
+            HapticManager.performHapticFeedback(this)
+        }
+
+        // Get the text to commit
+        val commitText = character.getCommitText()
+
+        // Use input handler for Myanmar-specific processing (E-vowel reordering, etc.)
+        val processedText = if (commitText.length == 1) {
+            currentInputHandler.handleInput(character.code, ic)
+        } else {
+            // Multi-character sequence - commit each character through handler
+            val sb = StringBuilder()
+            for (c in commitText) {
+                sb.append(currentInputHandler.handleInput(c.code, ic))
+            }
+            sb.toString()
+        }
+
+        ic.commitText(processedText, 1)
+    }
+
+    override fun onSpecialKey(primaryCode: Int, key: Key) {
+        val ic = currentInputConnection ?: return
+
+        // Play sound and haptic feedback
+        if (KeyboardConfig.isSoundOn()) {
+            SoundManager.playClick(this, primaryCode)
+        }
+        if (KeyboardConfig.isHapticEnabled()) {
+            HapticManager.performHapticFeedback(this)
+        }
+
+        when (primaryCode) {
+            Key.KEYCODE_MODE_CHANGE -> {
+                handleSymByLocale()
+            }
+            Key.KEYCODE_SWITCH_KEYBOARD -> {
+                // Switch to next input method subtype (globe key)
+                inputMethodManager?.switchToNextInputMethod(getToken(), true)
+            }
+            Key.KEYCODE_DELETE -> {
+                if (KeyboardConfig.isPrimeBookOn()) {
+                    currentInputHandler.handleDelete(ic, DeleteHandler.isEndOfText(ic))
+                } else {
+                    DeleteHandler.deleteChar(ic)
+                }
+            }
+            Key.KEYCODE_DONE -> {
+                ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
+                ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
+            }
+            Key.KEYCODE_EMOJI -> {
+                showEmojiView()
+            }
+            32 -> { // Space
+                ic.commitText(" ", 1)
+            }
+        }
+    }
+
+    override fun onSpecialKeyRepeat(primaryCode: Int, key: Key) {
+        val ic = currentInputConnection ?: return
+
+        when (primaryCode) {
+            Key.KEYCODE_DELETE -> {
+                DeleteHandler.deleteChar(ic)
+            }
+        }
+    }
+
+    override fun onKeyDown(key: Any) {
+        // Key press feedback is handled in onFlickCharacter and onSpecialKey
+    }
+
+    override fun onKeyUp(key: Any) {
+        // Key release - no action needed
+    }
+
+    override fun onSwipeLeft() {
+        inputMethodManager?.switchToNextInputMethod(getToken(), true)
+    }
+
+    override fun onSwipeRight() {
+        inputMethodManager?.switchToNextInputMethod(getToken(), true)
+    }
+
+    override fun onPunctuationSingleTap() {
+        val ic = currentInputConnection ?: return
+
+        // Play sound and haptic feedback
+        if (KeyboardConfig.isSoundOn()) {
+            SoundManager.playClick(this, 0x104A)
+        }
+        if (KeyboardConfig.isHapticEnabled()) {
+            HapticManager.performHapticFeedback(this)
+        }
+
+        // Insert ၊ (Little Section)
+        ic.commitText("၊", 1)
+    }
+
+    override fun onPunctuationDoubleTap() {
+        val ic = currentInputConnection ?: return
+
+        // Play sound and haptic feedback
+        if (KeyboardConfig.isSoundOn()) {
+            SoundManager.playClick(this, 0x104B)
+        }
+        if (KeyboardConfig.isHapticEnabled()) {
+            HapticManager.performHapticFeedback(this)
+        }
+
+        // Double tap detected before single tap was executed,
+        // so just insert ။ (Section) directly - no deletion needed
+        ic.commitText("။", 1)
+    }
+
+    override fun onFlickKeyLongPress(key: FlickKey, alternateCode: Int) {
+        val ic = currentInputConnection ?: return
+
+        // Play sound and haptic feedback
+        if (KeyboardConfig.isSoundOn()) {
+            SoundManager.playClick(this, alternateCode)
+        }
+        if (KeyboardConfig.isHapticEnabled()) {
+            HapticManager.performHapticFeedback(this)
+        }
+
+        // Output the alternate character
+        val text = String(Character.toChars(alternateCode))
+        ic.commitText(text, 1)
     }
 }

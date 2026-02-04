@@ -19,8 +19,8 @@ object MyanmarUnicode {
     const val CHA = 0x1006       // ဆ
     const val JA = 0x1007        // ဇ
     const val JHA = 0x1008       // ဈ (JA + YA_MEDIAL ligature)
-    const val NYA = 0x1009       // ည
-    const val NNYA = 0x100A      // ဉ
+    const val NYA = 0x1009       // ဉ (small nya)
+    const val NNYA = 0x100A      // ည (big nya)
     const val TTA = 0x100B       // ဋ
     const val TTHA = 0x100C      // ဌ
     const val DDA = 0x100D       // ဍ

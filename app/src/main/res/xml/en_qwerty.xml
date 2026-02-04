@@ -67,7 +67,7 @@
         <Key android:codes="-101" android:keyIcon="@drawable/sym_keyboard_language_switch"
                 android:keyWidth="11%p" android:isModifier="true"/>
 
-       <Key android:codes="-202" android:keyLabel="☺"
+       <Key android:codes="-202" android:keyIcon="@drawable/sym_keyboard_emoji"
                 android:keyWidth="9%p" android:isModifier="true"/>
         <Key android:codes="32" android:keyIcon="@drawable/sym_keyboard_space"
                 android:keyWidth="34%p" android:isRepeatable="true" android:isModifier="true"/>

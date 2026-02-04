@@ -44,5 +44,11 @@
         android:imeSubtypeLocale="epkrn_MM"
         android:imeSubtypeMode="keyboard"
         android:label="@string/label_subtype_epkrn_MM" />
+    <subtype
+        android:icon="@drawable/my_mm"
+        android:imeSubtypeExtraValue="8"
+        android:imeSubtypeLocale="my_MM"
+        android:imeSubtypeMode="keyboard"
+        android:label="@string/label_subtype_my_flick" />
 
 </input-method>

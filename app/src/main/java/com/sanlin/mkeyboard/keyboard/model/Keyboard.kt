@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.drawable.Drawable
 import android.util.DisplayMetrics
 import com.sanlin.mkeyboard.config.KeyboardConfig
+import com.sanlin.mkeyboard.keyboard.KeyboardHeightCalculator
 import com.sanlin.mkeyboard.keyboard.parser.KeyboardXmlParser
 
 /**
@@ -14,7 +15,7 @@ import com.sanlin.mkeyboard.keyboard.parser.KeyboardXmlParser
  * the data model for the keyboard view to render.
  */
 open class Keyboard(
-    context: Context,
+    private val context: Context,
     xmlLayoutResId: Int,
     modeId: Int = 0
 ) {
@@ -104,7 +105,33 @@ open class Keyboard(
      * Called when parsing is complete to finalize keyboard dimensions.
      */
     internal fun finalizeParsing() {
-        // Calculate total height and fix key positions
+        // Calculate the standard keyboard height (same as flick keyboard)
+        val standardHeight = KeyboardHeightCalculator.getStandardKeyboardHeight(context)
+
+        // Calculate total key height (without gaps)
+        var totalKeyHeight = 0
+        for (row in rows) {
+            if (row.keys.isNotEmpty()) {
+                totalKeyHeight += row.defaultHeight
+            }
+        }
+
+        // Calculate adjusted vertical gap to match standard height
+        val rowCount = rows.count { it.keys.isNotEmpty() }
+        val gapCount = rowCount - 1
+        val adjustedVerticalGap = if (gapCount > 0) {
+            val requiredGapSpace = standardHeight - totalKeyHeight
+            (requiredGapSpace / gapCount).coerceAtLeast(0)
+        } else {
+            defaultVerticalGap
+        }
+
+        // Apply adjusted vertical gap to all rows
+        for (row in rows) {
+            row.verticalGap = adjustedVerticalGap
+        }
+
+        // Calculate total height and fix key positions with adjusted gaps
         var currentY = 0
         for (row in rows) {
             for (key in row.keys) {

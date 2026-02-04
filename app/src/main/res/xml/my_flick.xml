@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Myanmar Flick Keyboard Layout
+
+    Format: center/up/down/left/right
+    Row 1: [က/ခ/ဂ/ဃ/င] [စ/ဆ/ဇ/ဈ/ည] [ျ/ြ/ွ/ဉ/ှ]
+    Row 2: [တ/ထ/ဒ/ဓ/န] [ပ/ဖ/ဗ/ဘ/မ] [ေ/ဲ/း/ု/ူ]
+    Row 3: [ယ/ရ/လ/ဝ/သ] [အ/ဠ/ဟ/ဿ/ဧ] [ာ/ီ/ိ/ံ/့]
+    Row 4: [ဋ/ဌ/ဍ/ဎ/ဏ] [ဣ/၌/၍/ဤ/၏] [်/ဥ/ဦ/္/ဩ]
+-->
+<FlickKeyboard xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <!-- Row 1 -->
+    <Row>
+        <!-- Key 1: က/ခ/ဂ/ဃ/င -->
+        <FlickKey
+            app:centerCodes="4096" app:centerLabel="က"
+            app:upCodes="4097" app:upLabel="ခ"
+            app:downCodes="4098" app:downLabel="ဂ"
+            app:leftCodes="4099" app:leftLabel="ဃ"
+            app:rightCodes="4100" app:rightLabel="င" />
+
+        <!-- Key 2: စ/ဆ/ဇ/ဈ/ည -->
+        <FlickKey
+            app:centerCodes="4101" app:centerLabel="စ"
+            app:upCodes="4102" app:upLabel="ဆ"
+            app:downCodes="4103" app:downLabel="ဇ"
+            app:leftCodes="4104" app:leftLabel="ဈ"
+            app:rightCodes="4106" app:rightLabel="ည" />
+
+        <!-- Key 3: ျ/ြ/ွ/ဉ/ှ (Medials) -->
+        <FlickKey
+            app:centerCodes="4155" app:centerLabel="ျ"
+            app:upCodes="4156" app:upLabel="ြ"
+            app:downCodes="4157" app:downLabel="ွ"
+            app:leftCodes="4105" app:leftLabel="ဉ"
+            app:rightCodes="4158" app:rightLabel="ှ" />
+    </Row>
+
+    <!-- Row 2 -->
+    <Row>
+        <!-- Key 4: တ/ထ/ဒ/ဓ/န -->
+        <FlickKey
+            app:centerCodes="4112" app:centerLabel="တ"
+            app:upCodes="4113" app:upLabel="ထ"
+            app:downCodes="4114" app:downLabel="ဒ"
+            app:leftCodes="4115" app:leftLabel="ဓ"
+            app:rightCodes="4116" app:rightLabel="န" />
+
+        <!-- Key 5: ပ/ဖ/ဗ/ဘ/မ -->
+        <FlickKey
+            app:centerCodes="4117" app:centerLabel="ပ"
+            app:upCodes="4118" app:upLabel="ဖ"
+            app:downCodes="4119" app:downLabel="ဗ"
+            app:leftCodes="4120" app:leftLabel="ဘ"
+            app:rightCodes="4121" app:rightLabel="မ" />
+
+        <!-- Key 6: ေ/ဲ/း/ု/ူ (Vowels) -->
+        <FlickKey
+            app:centerCodes="4145" app:centerLabel="ေ"
+            app:upCodes="4146" app:upLabel="ဲ"
+            app:downCodes="4152" app:downLabel="း"
+            app:leftCodes="4143" app:leftLabel="ု"
+            app:rightCodes="4144" app:rightLabel="ူ" />
+    </Row>
+
+    <!-- Row 3 -->
+    <Row>
+        <!-- Key 7: ယ/ရ/လ/ဝ/သ -->
+        <FlickKey
+            app:centerCodes="4122" app:centerLabel="ယ"
+            app:upCodes="4123" app:upLabel="ရ"
+            app:downCodes="4124" app:downLabel="လ"
+            app:leftCodes="4125" app:leftLabel="ဝ"
+            app:rightCodes="4126" app:rightLabel="သ" />
+
+        <!-- Key 8: အ/ဠ/ဟ/ဿ/ဧ -->
+        <FlickKey
+            app:centerCodes="4129" app:centerLabel="အ"
+            app:upCodes="4128" app:upLabel="ဠ"
+            app:downCodes="4127" app:downLabel="ဟ"
+            app:leftCodes="4159" app:leftLabel="ဿ"
+            app:rightCodes="4135" app:rightLabel="ဧ" />
+
+        <!-- Key 9: ာ/ီ/ိ/ံ/့ (Vowel signs) - long press center for ါ -->
+        <FlickKey
+            app:centerCodes="4140" app:centerLabel="ာ/ါ"
+            app:upCodes="4142" app:upLabel="ီ"
+            app:downCodes="4141" app:downLabel="ိ"
+            app:leftCodes="4150" app:leftLabel="ံ"
+            app:rightCodes="4151" app:rightLabel="့" />
+    </Row>
+
+    <!-- Row 4 -->
+    <Row>
+        <!-- Key 10: ဋ/ဌ/ဍ/ဎ/ဏ -->
+        <FlickKey
+            app:centerCodes="4107" app:centerLabel="ဋ"
+            app:upCodes="4108" app:upLabel="ဌ"
+            app:downCodes="4109" app:downLabel="ဍ"
+            app:leftCodes="4110" app:leftLabel="ဎ"
+            app:rightCodes="4111" app:rightLabel="ဏ" />
+
+        <!-- Key 11: ဣ/၌/၍/ဤ/၏ -->
+        <FlickKey
+            app:centerCodes="4131" app:centerLabel="ဣ"
+            app:upCodes="4172" app:upLabel="၌"
+            app:downCodes="4173" app:downLabel="၍"
+            app:leftCodes="4132" app:leftLabel="ဤ"
+            app:rightCodes="4175" app:rightLabel="၏" />
+
+        <!-- Key 12: ်/ဥ/ဦ/္/ဩ -->
+        <FlickKey
+            app:centerCodes="4154" app:centerLabel="်"
+            app:upCodes="4133" app:upLabel="ဥ"
+            app:downCodes="4134" app:downLabel="ဦ"
+            app:leftCodes="4153" app:leftLabel="္"
+            app:rightCodes="4137" app:rightLabel="ဩ" />
+    </Row>
+
+</FlickKeyboard>

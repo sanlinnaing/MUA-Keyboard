@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Custom attributes for FlickKey in flick keyboard XML -->
+    <declare-styleable name="FlickKey">
+        <!-- Center character (tap) -->
+        <attr name="centerCodes" format="string" />
+        <attr name="centerLabel" format="string" />
+
+        <!-- Up direction character -->
+        <attr name="upCodes" format="string" />
+        <attr name="upLabel" format="string" />
+
+        <!-- Down direction character -->
+        <attr name="downCodes" format="string" />
+        <attr name="downLabel" format="string" />
+
+        <!-- Left direction character -->
+        <attr name="leftCodes" format="string" />
+        <attr name="leftLabel" format="string" />
+
+        <!-- Right direction character -->
+        <attr name="rightCodes" format="string" />
+        <attr name="rightLabel" format="string" />
+    </declare-styleable>
+</resources>
