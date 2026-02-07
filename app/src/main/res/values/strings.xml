@@ -45,5 +45,9 @@
     <string name="haptic_feedback_summ">Vibrate on key press</string>
     <string name="haptic_strength_title">Vibration Strength</string>
     <string name="haptic_strength_summ">Adjust vibration intensity</string>
+    <string name="suggestion_method_title">Suggestion Method</string>
+    <string name="suggestion_method_summ">Choose word or syllable predictions</string>
+    <string name="suggestion_order_title">Suggestion Order (Both mode)</string>
+    <string name="suggestion_order_summ">How to combine LSTM and Trie suggestions</string>
 
 </resources>
