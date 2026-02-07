@@ -347,12 +347,18 @@ class BamarInputHandler(
 
     private fun deleteCharBeforeEvowel(ic: InputConnection) {
         ic.deleteSurroundingText(2, 0)
-        ic.commitText(MyanmarUnicode.E_VOWEL.toChar().toString(), 1)
+        // Add ZWSP before E_VOWEL to prevent visual reordering with previous cluster
+        val temp = charArrayOf(MyanmarUnicode.ZWSP.toChar(), MyanmarUnicode.E_VOWEL.toChar())
+        ic.commitText(String(temp), 1)
+        hasZWSP = true
     }
 
     private fun deleteTwoCharBeforeEvowel(ic: InputConnection) {
         ic.deleteSurroundingText(3, 0)
-        ic.commitText(MyanmarUnicode.E_VOWEL.toChar().toString(), 1)
+        // Add ZWSP before E_VOWEL to prevent visual reordering with previous cluster
+        val temp = charArrayOf(MyanmarUnicode.ZWSP.toChar(), MyanmarUnicode.E_VOWEL.toChar())
+        ic.commitText(String(temp), 1)
+        hasZWSP = true
     }
 
     private fun getFlagMedial(ic: InputConnection) {

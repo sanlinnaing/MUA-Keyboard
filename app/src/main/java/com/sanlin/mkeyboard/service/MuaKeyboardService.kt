@@ -1485,9 +1485,9 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
             HapticManager.performHapticFeedback(this)
         }
 
-        // Output the alternate character
-        val text = String(Character.toChars(alternateCode))
-        ic.commitText(text, 1)
+        // Use input handler for proper Myanmar text processing (reordering, etc.)
+        val processedText = currentInputHandler.handleInput(alternateCode, ic)
+        ic.commitText(processedText, 1)
         updateSuggestions()
     }
 }
