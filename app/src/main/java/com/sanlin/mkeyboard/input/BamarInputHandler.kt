@@ -293,7 +293,8 @@ class BamarInputHandler(
                 if (isMedial(secPrev)) {
                     getFlagMedial(ic)
                     if (swapConsonant) {
-                        deleteCharBeforeEvowel(ic)
+                        // Delete medial before E-vowel, no ZWSP needed (consonant remains)
+                        deleteMedialBeforeEvowel(ic)
                         medialCount--
 
                         stackPointer--
@@ -315,9 +316,11 @@ class BamarInputHandler(
                     var thirdChar = 0
                     if (getThirdText != null && getThirdText.length == 3) thirdChar = getThirdText[0].code
                     if (thirdChar == MyanmarUnicode.VIRAMA) {
-                        deleteTwoCharBeforeEvowel(ic)
+                        // Delete consonant with virama before E-vowel, add ZWSP (consonant gone)
+                        deleteTwoCharBeforeEvowelWithZWSP(ic)
                     } else {
-                        deleteCharBeforeEvowel(ic)
+                        // Delete consonant before E-vowel, add ZWSP (consonant gone)
+                        deleteCharBeforeEvowelWithZWSP(ic)
                     }
                     swapConsonant = false
                     swapMedial = false
@@ -345,17 +348,33 @@ class BamarInputHandler(
         stackPointer = 0
     }
 
-    private fun deleteCharBeforeEvowel(ic: InputConnection) {
+    /**
+     * Delete medial before E-vowel (no ZWSP needed, consonant remains).
+     * Used when deleting a medial from consonant+medial+E-vowel pattern.
+     */
+    private fun deleteMedialBeforeEvowel(ic: InputConnection) {
         ic.deleteSurroundingText(2, 0)
-        // Add ZWSP before E_VOWEL to prevent visual reordering with previous cluster
+        ic.commitText(MyanmarUnicode.E_VOWEL.toChar().toString(), 1)
+    }
+
+    /**
+     * Delete consonant before E-vowel and add ZWSP.
+     * Used when deleting consonant from consonant+E-vowel pattern.
+     * ZWSP prevents E-vowel from visually attaching to previous cluster.
+     */
+    private fun deleteCharBeforeEvowelWithZWSP(ic: InputConnection) {
+        ic.deleteSurroundingText(2, 0)
         val temp = charArrayOf(MyanmarUnicode.ZWSP.toChar(), MyanmarUnicode.E_VOWEL.toChar())
         ic.commitText(String(temp), 1)
         hasZWSP = true
     }
 
-    private fun deleteTwoCharBeforeEvowel(ic: InputConnection) {
+    /**
+     * Delete consonant with virama before E-vowel and add ZWSP.
+     * Used when deleting stacked consonant from virama+consonant+E-vowel pattern.
+     */
+    private fun deleteTwoCharBeforeEvowelWithZWSP(ic: InputConnection) {
         ic.deleteSurroundingText(3, 0)
-        // Add ZWSP before E_VOWEL to prevent visual reordering with previous cluster
         val temp = charArrayOf(MyanmarUnicode.ZWSP.toChar(), MyanmarUnicode.E_VOWEL.toChar())
         ic.commitText(String(temp), 1)
         hasZWSP = true

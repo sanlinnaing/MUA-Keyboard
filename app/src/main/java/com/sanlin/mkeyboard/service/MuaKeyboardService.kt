@@ -1031,7 +1031,35 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                     val alternateCode = currentInputHandler.checkDoubleTap(primaryCode, keyCodes)
                     if (alternateCode != -1) {
                         // Double-tap detected - check actual text to determine action
+                        // Check 3 chars to detect [consonant][E_VOWEL][first_tap_char] pattern
+                        val textBefore3 = ic.getTextBeforeCursor(3, 0)
                         val textBefore = ic.getTextBeforeCursor(2, 0)
+
+                        // Check if alternate is a medial (needs special reordering)
+                        val isMedial = MyanmarUnicode.isMedial(alternateCode)
+
+                        if (textBefore3 != null && textBefore3.length >= 3 && isMedial) {
+                            val thirdChar = textBefore3[0].code  // Character 3 positions back
+                            val secondChar = textBefore3[1].code // E_VOWEL position
+                            val firstChar = textBefore3[2].code  // First tap character
+
+                            // Check for pattern [consonant][E_VOWEL][first_tap] -> insert medial
+                            if (secondChar == MyanmarUnicode.E_VOWEL &&
+                                MyanmarUnicode.isConsonant(thirdChar)) {
+                                // Pattern: [consonant][E_VOWEL][first_tap]
+                                // Delete 2 chars (first_tap + E_VOWEL), insert [medial][E_VOWEL]
+                                ic.deleteSurroundingText(2, 0)
+                                val reorderedText = charArrayOf(
+                                    alternateCode.toChar(),
+                                    MyanmarUnicode.E_VOWEL.toChar()
+                                )
+                                ic.commitText(String(reorderedText), 1)
+                                currentInputHandler.prepareForDoubleTap()
+                                if (shifted) unshiftByLocale()
+                                updateSuggestions()
+                                return
+                            }
+                        }
 
                         if (textBefore != null && textBefore.length >= 2) {
                             val firstChar = textBefore[0].code
