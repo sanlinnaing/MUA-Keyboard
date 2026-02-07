@@ -4,8 +4,8 @@
 
     Format: center/up/down/left/right
     Row 1: [က/ခ/ဂ/ဃ/င] [စ/ဆ/ဇ/ဈ/ည] [ျ/ြ/ွ/ဉ/ှ]
-    Row 2: [တ/ထ/ဒ/ဓ/န] [ပ/ဖ/ဗ/ဘ/မ] [ေ/ဲ/း/ု/ူ]
-    Row 3: [ယ/ရ/လ/ဝ/သ] [အ/ဠ/ဟ/ဿ/ဧ] [ာ/ီ/ိ/ံ/့]
+    Row 2: [တ/ထ/ဒ/ဓ/န] [ပ/ဖ/ဗ/ဘ/မ] [ေ/ိ/ီ/ဲ/း]
+    Row 3: [ယ/ရ/လ/ဝ/သ] [အ/ဠ/ဟ/ဿ/ဧ] [ာ/ံ/့/ု/ူ]
     Row 4: [ဋ/ဌ/ဍ/ဎ/ဏ] [ဣ/၌/၍/ဤ/၏] [်/ဥ/ဦ/္/ဩ]
 -->
 <FlickKeyboard xmlns:app="http://schemas.android.com/apk/res-auto">
@@ -55,13 +55,13 @@
             app:leftCodes="4120" app:leftLabel="ဘ"
             app:rightCodes="4121" app:rightLabel="မ" />
 
-        <!-- Key 6: ေ/ဲ/း/ု/ူ (Vowels) -->
+        <!-- Key 6: ေ/ိ/ီ/ဲ/း (Vowel signs) -->
         <FlickKey
             app:centerCodes="4145" app:centerLabel="ေ"
-            app:upCodes="4146" app:upLabel="ဲ"
-            app:downCodes="4152" app:downLabel="း"
-            app:leftCodes="4143" app:leftLabel="ု"
-            app:rightCodes="4144" app:rightLabel="ူ" />
+            app:upCodes="4141" app:upLabel="ိ"
+            app:downCodes="4142" app:downLabel="ီ"
+            app:leftCodes="4146" app:leftLabel="ဲ"
+            app:rightCodes="4152" app:rightLabel="း" />
     </Row>
 
     <!-- Row 3 -->
@@ -82,13 +82,13 @@
             app:leftCodes="4159" app:leftLabel="ဿ"
             app:rightCodes="4135" app:rightLabel="ဧ" />
 
-        <!-- Key 9: ာ/ီ/ိ/ံ/့ (Vowel signs) - long press center for ါ -->
+        <!-- Key 9: ာ/ံ/့/ု/ူ (Vowel signs) - long press center for ါ -->
         <FlickKey
             app:centerCodes="4140" app:centerLabel="ာ/ါ"
-            app:upCodes="4142" app:upLabel="ီ"
-            app:downCodes="4141" app:downLabel="ိ"
-            app:leftCodes="4150" app:leftLabel="ံ"
-            app:rightCodes="4151" app:rightLabel="့" />
+            app:upCodes="4150" app:upLabel="ံ"
+            app:downCodes="4151" app:downLabel="့"
+            app:leftCodes="4143" app:leftLabel="ု"
+            app:rightCodes="4144" app:rightLabel="ူ" />
     </Row>
 
     <!-- Row 4 -->
