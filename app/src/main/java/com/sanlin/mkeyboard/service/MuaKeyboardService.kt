@@ -2,7 +2,9 @@ package com.sanlin.mkeyboard.service
 
 import android.inputmethodservice.InputMethodService
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
@@ -11,10 +13,12 @@ import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputMethodManager
 import android.view.inputmethod.InputMethodSubtype
 import android.widget.FrameLayout
+import android.widget.LinearLayout
 import android.graphics.Color
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import android.content.SharedPreferences
 import androidx.preference.PreferenceManager
 import com.sanlin.mkeyboard.R
 import com.sanlin.mkeyboard.config.KeyboardConfig
@@ -31,10 +35,15 @@ import com.sanlin.mkeyboard.view.MuaKeyboardView
 import com.sanlin.mkeyboard.view.OnKeyboardActionListener
 import com.sanlin.mkeyboard.view.FlickKeyboardView
 import com.sanlin.mkeyboard.view.OnFlickKeyboardActionListener
+import com.sanlin.mkeyboard.view.SuggestionBarView
 import com.sanlin.mkeyboard.keyboard.model.FlickKeyboard
 import com.sanlin.mkeyboard.keyboard.model.FlickKey
 import com.sanlin.mkeyboard.keyboard.model.FlickCharacter
 import com.sanlin.mkeyboard.keyboard.model.FlickDirection
+import com.sanlin.mkeyboard.suggestion.SuggestionManager
+import com.sanlin.mkeyboard.suggestion.SuggestionMethod
+import com.sanlin.mkeyboard.suggestion.SyllableBreaker
+import java.util.concurrent.Executors
 
 /**
  * Main Input Method Service for MUA Keyboard.
@@ -46,6 +55,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
     private var flickKv: FlickKeyboardView? = null
     private var flickKeyboard: FlickKeyboard? = null
     private var emojiView: EmojiView? = null
+    private var suggestionBar: SuggestionBarView? = null
     private var keyboardContainer: FrameLayout? = null
     private var inputMethodManager: InputMethodManager? = null
     private var caps = false
@@ -54,10 +64,42 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
     private var wasFlickModeBeforeSymbol = false  // Track if we came from flick mode when entering symbol/emoji
     private var lastMainSubtypeId = 1  // Track the last used main subtype (not symbol/emoji)
 
+    // Suggestion engine
+    private var suggestionManager: SuggestionManager? = null
+    private val suggestionHandler = Handler(Looper.getMainLooper())
+    private var pendingSuggestionUpdate: Runnable? = null
+    private val backgroundExecutor = Executors.newSingleThreadExecutor()
+    private var lastSuggestionWord: String? = null  // Track which suggestion was selected
+
+    // Preference listener for suggestion method/order changes
+    private val preferenceChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { prefs, key ->
+        if (key == "suggestion_method") {
+            val methodStr = prefs.getString("suggestion_method", "word") ?: "word"
+            val method = when (methodStr) {
+                "syllable" -> SuggestionMethod.SYLLABLE
+                "both" -> SuggestionMethod.BOTH
+                else -> SuggestionMethod.WORD
+            }
+            backgroundExecutor.execute {
+                suggestionManager?.setMethod(method)
+            }
+            // Clear and update suggestions with new method
+            suggestionBar?.clearSuggestions()
+            updateSuggestions()
+        } else if (key == "suggestion_order") {
+            // Order change just needs to refresh suggestions
+            // The SuggestionManager reads the preference directly
+            suggestionBar?.clearSuggestions()
+            updateSuggestions()
+        }
+    }
+
     // Flick keyboard subtype ID
     companion object {
         private const val TAG = "MuaKeyboardService"
         private const val FLICK_KEYBOARD_ID = 8
+        private const val SUGGESTION_DEBOUNCE_MS = 100L
+        private const val TEXT_BEFORE_CURSOR_LENGTH = 100
     }
 
     // Keyboards
@@ -89,13 +131,47 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
 
         // Initialize recent emoji manager
         RecentEmojiManager.initialize(this)
+
+        // Initialize suggestion engine in background
+        initializeSuggestionEngine()
+
+        // Register preference change listener
+        PreferenceManager.getDefaultSharedPreferences(this)
+            .registerOnSharedPreferenceChangeListener(preferenceChangeListener)
+    }
+
+    private fun initializeSuggestionEngine() {
+        val sharedPref = PreferenceManager.getDefaultSharedPreferences(this)
+        val methodStr = sharedPref.getString("suggestion_method", "word") ?: "word"
+        val method = when (methodStr) {
+            "syllable" -> SuggestionMethod.SYLLABLE
+            "both" -> SuggestionMethod.BOTH
+            else -> SuggestionMethod.WORD
+        }
+
+        backgroundExecutor.execute {
+            suggestionManager = SuggestionManager(this@MuaKeyboardService)
+            val success = suggestionManager?.initialize(method) ?: false
+            if (!success) {
+                android.util.Log.e(TAG, "Failed to initialize suggestion manager")
+            }
+        }
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        // Unregister preference listener
+        PreferenceManager.getDefaultSharedPreferences(this)
+            .unregisterOnSharedPreferenceChangeListener(preferenceChangeListener)
+
         // Release sound and haptic resources
         SoundManager.release()
         HapticManager.release()
+
+        // Release suggestion engine
+        suggestionManager?.release()
+        suggestionManager = null
+        backgroundExecutor.shutdown()
     }
 
     private fun initializeInputHandlers() {
@@ -178,36 +254,58 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
             setBackgroundColor(backgroundColor)
         }
 
-        kv?.let { keyboardView ->
-            // Set explicit LayoutParams since inflate with null parent ignores XML layout params
-            val layoutParams = FrameLayout.LayoutParams(
+        // Create a vertical container for suggestion bar + keyboard
+        val verticalContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.WRAP_CONTENT
             )
+        }
+
+        // Create suggestion bar (always visible)
+        suggestionBar = SuggestionBarView(this).apply {
+            setOnSuggestionClickListener { word ->
+                commitSuggestion(word)
+            }
+        }
+        verticalContainer.addView(suggestionBar, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ))
+
+        kv?.let { keyboardView ->
+            // Set explicit LayoutParams since inflate with null parent ignores XML layout params
+            val layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
             // Add top margin for gap at top of keyboard
             layoutParams.topMargin = topPadding
-            container.addView(keyboardView, layoutParams)
+            verticalContainer.addView(keyboardView, layoutParams)
         }
+
+        container.addView(verticalContainer)
 
         // Create flick keyboard view
         flickKeyboard = FlickKeyboard(this)
         flickKv = FlickKeyboardView(this).apply {
-            val layoutParams = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT
+            val layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
             )
             layoutParams.topMargin = topPadding
             visibility = View.GONE  // Initially hidden
             setKeyboard(flickKeyboard!!)
             setOnFlickKeyboardActionListener(this@MuaKeyboardService)
-            container.addView(this, layoutParams)
+            verticalContainer.addView(this, layoutParams)
         }
 
         // Create emoji view
         emojiView = EmojiView(this).apply {
-            val layoutParams = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT
+            val layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
             )
             layoutParams.topMargin = topPadding
             visibility = View.GONE  // Initially hidden
@@ -240,7 +338,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                 }
             }
 
-            container.addView(this, layoutParams)
+            verticalContainer.addView(this, layoutParams)
         }
 
         keyboardContainer = container
@@ -386,6 +484,83 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
     }
 
     /**
+     * Update suggestions based on current text before cursor.
+     * Uses debouncing to avoid excessive updates while typing.
+     */
+    private fun updateSuggestions() {
+        // Cancel any pending update
+        pendingSuggestionUpdate?.let { suggestionHandler.removeCallbacks(it) }
+
+        pendingSuggestionUpdate = Runnable {
+            val ic = currentInputConnection
+            val manager = suggestionManager
+
+            // Clear suggestions if no input connection or manager not ready
+            if (ic == null || manager == null || !manager.isReady) {
+                suggestionBar?.clearSuggestions()
+                return@Runnable
+            }
+
+            // Clear suggestions for non-Myanmar keyboards (but bar stays visible)
+            val localeId = getLocaleId()
+            if (localeId !in 2..7 && localeId != FLICK_KEYBOARD_ID) {
+                suggestionBar?.clearSuggestions()
+                return@Runnable
+            }
+
+            // Clear suggestions during emoji mode
+            if (isEmojiMode) {
+                suggestionBar?.clearSuggestions()
+                return@Runnable
+            }
+
+            val textBefore = ic.getTextBeforeCursor(TEXT_BEFORE_CURSOR_LENGTH, 0)?.toString() ?: ""
+
+            // Clear suggestions if no Myanmar text
+            if (textBefore.isEmpty() || !SyllableBreaker.containsMyanmarText(textBefore)) {
+                suggestionBar?.clearSuggestions()
+                return@Runnable
+            }
+
+            val suggestions = manager.getSuggestions(textBefore)
+            suggestionBar?.setSuggestions(suggestions)
+        }
+
+        suggestionHandler.postDelayed(pendingSuggestionUpdate!!, SUGGESTION_DEBOUNCE_MS)
+    }
+
+    /**
+     * Commit a suggestion from the suggestion bar.
+     * For word suggestions, replaces the matched syllables.
+     * For syllable suggestions, appends the syllable.
+     */
+    private fun commitSuggestion(word: String) {
+        val ic = currentInputConnection ?: return
+        val manager = suggestionManager ?: return
+
+        val textBefore = ic.getTextBeforeCursor(TEXT_BEFORE_CURSOR_LENGTH, 0)?.toString() ?: ""
+        val replaceLength = manager.getReplacementLength(textBefore, word)
+
+        if (replaceLength > 0) {
+            ic.deleteSurroundingText(replaceLength, 0)
+        }
+
+        ic.commitText(word, 1)
+
+        // Play feedback
+        if (KeyboardConfig.isSoundOn()) {
+            SoundManager.playClick(this, 0)
+        }
+        if (KeyboardConfig.isHapticEnabled()) {
+            HapticManager.performHapticFeedback(this)
+        }
+
+        // Clear suggestions and trigger new update
+        suggestionBar?.clearSuggestions()
+        updateSuggestions()
+    }
+
+    /**
      * Fallback method to get navigation bar height for devices where
      * WindowInsets API doesn't fire immediately. This uses the legacy
      * resource-based approach but the WindowInsets listener will override
@@ -429,6 +604,9 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
             lastMainSubtypeId = savedSubtypeId
             applySubtype(savedSubtypeId)
         }
+
+        // Update suggestions for any existing text
+        updateSuggestions()
     }
 
     /**
@@ -586,6 +764,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                 val shanHandler = currentInputHandler as? ShanInputHandler
                 ic.commitText(shanHandler?.shanVowel1() ?: "", 1)
                 unshiftByLocale()
+                updateSuggestions()
             }
             Key.KEYCODE_MYANMAR_MONEY -> {
                 val localeId = getLocaleId()
@@ -593,6 +772,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                     2, 3, 4 -> currentInputHandler.handleMoneySym(ic)
                 }
                 handleSymByLocale()
+                updateSuggestions()
             }
             Key.KEYCODE_MODE_CHANGE -> {
                 handleSymByLocale()
@@ -603,6 +783,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                 } else {
                     DeleteHandler.deleteChar(ic)
                 }
+                updateSuggestions()
             }
             Key.KEYCODE_DELETE -> {
                 handleDeleteKey(ic)
@@ -681,6 +862,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                         if (shifted) {
                             unshiftByLocale()
                         }
+                        updateSuggestions()
                         return
                     }
                 }
@@ -696,6 +878,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                 if (shifted) {
                     unshiftByLocale()
                 }
+                updateSuggestions()
             }
         }
     }
@@ -706,6 +889,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         } else {
             DeleteHandler.deleteChar(ic)
         }
+        updateSuggestions()
     }
 
     private fun handleSymByLocale() {
@@ -845,6 +1029,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         }
 
         ic.commitText(processedText, 1)
+        updateSuggestions()
     }
 
     override fun onSpecialKey(primaryCode: Int, key: Key) {
@@ -872,6 +1057,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                 } else {
                     DeleteHandler.deleteChar(ic)
                 }
+                updateSuggestions()
             }
             Key.KEYCODE_DONE -> {
                 ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
@@ -882,6 +1068,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
             }
             32 -> { // Space
                 ic.commitText(" ", 1)
+                updateSuggestions()
             }
         }
     }
@@ -892,6 +1079,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         when (primaryCode) {
             Key.KEYCODE_DELETE -> {
                 DeleteHandler.deleteChar(ic)
+                updateSuggestions()
             }
         }
     }
@@ -925,6 +1113,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
 
         // Insert ၊ (Little Section)
         ic.commitText("၊", 1)
+        updateSuggestions()
     }
 
     override fun onPunctuationDoubleTap() {
@@ -941,6 +1130,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         // Double tap detected before single tap was executed,
         // so just insert ။ (Section) directly - no deletion needed
         ic.commitText("။", 1)
+        updateSuggestions()
     }
 
     override fun onFlickKeyLongPress(key: FlickKey, alternateCode: Int) {
@@ -957,5 +1147,6 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         // Output the alternate character
         val text = String(Character.toChars(alternateCode))
         ic.commitText(text, 1)
+        updateSuggestions()
     }
 }
