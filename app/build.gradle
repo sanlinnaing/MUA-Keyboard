@@ -48,6 +48,9 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'androidx.preference:preference-ktx:1.2.1'
 
+    // SymSpell for English spell checking
+    implementation 'com.darkrockstudios:symspellkt:3.4.0'
+
     // Testing
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.mockito:mockito-core:5.8.0'

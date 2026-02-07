@@ -1,5 +1,7 @@
 package com.sanlin.mkeyboard.service
 
+import android.content.ClipboardManager
+import android.content.Context
 import android.inputmethodservice.InputMethodService
 import android.os.Build
 import android.os.Handler
@@ -43,6 +45,8 @@ import com.sanlin.mkeyboard.keyboard.model.FlickDirection
 import com.sanlin.mkeyboard.suggestion.SuggestionManager
 import com.sanlin.mkeyboard.suggestion.SuggestionMethod
 import com.sanlin.mkeyboard.suggestion.SyllableBreaker
+import com.sanlin.mkeyboard.autocorrect.AutoCapitalizer
+import com.sanlin.mkeyboard.autocorrect.AutoCorrector
 import java.util.concurrent.Executors
 
 /**
@@ -71,35 +75,55 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
     private val backgroundExecutor = Executors.newSingleThreadExecutor()
     private var lastSuggestionWord: String? = null  // Track which suggestion was selected
 
-    // Preference listener for suggestion method/order changes
-    private val preferenceChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { prefs, key ->
-        if (key == "suggestion_method") {
-            val methodStr = prefs.getString("suggestion_method", "word") ?: "word"
-            val method = when (methodStr) {
-                "syllable" -> SuggestionMethod.SYLLABLE
-                "both" -> SuggestionMethod.BOTH
-                else -> SuggestionMethod.WORD
-            }
-            backgroundExecutor.execute {
-                suggestionManager?.setMethod(method)
-            }
-            // Clear and update suggestions with new method
-            suggestionBar?.clearSuggestions()
-            updateSuggestions()
-        } else if (key == "suggestion_order") {
-            // Order change just needs to refresh suggestions
-            // The SuggestionManager reads the preference directly
-            suggestionBar?.clearSuggestions()
-            updateSuggestions()
-        }
+    // English autocorrect/capitalize
+    private var autoCapitalizer: AutoCapitalizer? = null
+    private var autoCorrector: AutoCorrector? = null
+    private var englishSuggestionsEnabled = true
+    private var autoCapitalizeEnabled = true
+
+    // Clipboard
+    private var clipboardManager: ClipboardManager? = null
+    private val clipboardListener = ClipboardManager.OnPrimaryClipChangedListener {
+        updateClipboardText()
     }
 
-    // Flick keyboard subtype ID
-    companion object {
-        private const val TAG = "MuaKeyboardService"
-        private const val FLICK_KEYBOARD_ID = 8
-        private const val SUGGESTION_DEBOUNCE_MS = 100L
-        private const val TEXT_BEFORE_CURSOR_LENGTH = 100
+    // Preference listener for suggestion method/order changes
+    private val preferenceChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { prefs, key ->
+        when (key) {
+            "suggestion_method" -> {
+                val methodStr = prefs.getString("suggestion_method", "word") ?: "word"
+                val method = when (methodStr) {
+                    "syllable" -> SuggestionMethod.SYLLABLE
+                    "both" -> SuggestionMethod.BOTH
+                    else -> SuggestionMethod.WORD
+                }
+                backgroundExecutor.execute {
+                    suggestionManager?.setMethod(method)
+                }
+                // Clear and update suggestions with new method
+                suggestionBar?.clearSuggestions()
+                updateSuggestions()
+            }
+            "suggestion_order" -> {
+                // Order change just needs to refresh suggestions
+                // The SuggestionManager reads the preference directly
+                suggestionBar?.clearSuggestions()
+                updateSuggestions()
+            }
+            "english_suggestions" -> {
+                englishSuggestionsEnabled = prefs.getBoolean("english_suggestions", true)
+                if (englishSuggestionsEnabled && suggestionManager?.isEnglishReady != true) {
+                    backgroundExecutor.execute {
+                        suggestionManager?.initializeEnglish()
+                    }
+                }
+                suggestionBar?.clearSuggestions()
+                updateSuggestions()
+            }
+            "auto_capitalize" -> {
+                autoCapitalizeEnabled = prefs.getBoolean("auto_capitalize", true)
+            }
+        }
     }
 
     // Keyboards
@@ -114,9 +138,19 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
 
     // State
     private var shifted = false
+    private var capsLock = false  // Caps lock mode (double-tap shift)
+    private var lastShiftTime = 0L  // For detecting double-tap
     private var symbol = false
     private var wordSeparators: String = ""
     private var shanConsonants: String = ""
+
+    companion object {
+        private const val TAG = "MuaKeyboardService"
+        private const val FLICK_KEYBOARD_ID = 8
+        private const val SUGGESTION_DEBOUNCE_MS = 100L
+        private const val TEXT_BEFORE_CURSOR_LENGTH = 100
+        private const val DOUBLE_TAP_TIMEOUT_MS = 400L  // Time window for double-tap
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -128,6 +162,10 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         // Initialize sound and haptic systems
         SoundManager.initialize(this)
         HapticManager.initialize(this)
+
+        // Register clipboard listener
+        clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+        clipboardManager?.addPrimaryClipChangedListener(clipboardListener)
 
         // Initialize recent emoji manager
         RecentEmojiManager.initialize(this)
@@ -149,11 +187,27 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
             else -> SuggestionMethod.WORD
         }
 
+        // Read English preferences
+        englishSuggestionsEnabled = sharedPref.getBoolean("english_suggestions", true)
+        autoCapitalizeEnabled = sharedPref.getBoolean("auto_capitalize", true)
+
         backgroundExecutor.execute {
             suggestionManager = SuggestionManager(this@MuaKeyboardService)
             val success = suggestionManager?.initialize(method) ?: false
             if (!success) {
                 android.util.Log.e(TAG, "Failed to initialize suggestion manager")
+            }
+
+            // Initialize English engine if enabled
+            if (englishSuggestionsEnabled) {
+                val englishSuccess = suggestionManager?.initializeEnglish() ?: false
+                if (englishSuccess) {
+                    // Create autocorrect components on main thread
+                    suggestionHandler.post {
+                        autoCapitalizer = AutoCapitalizer()
+                        autoCorrector = AutoCorrector()
+                    }
+                }
             }
         }
     }
@@ -163,6 +217,9 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         // Unregister preference listener
         PreferenceManager.getDefaultSharedPreferences(this)
             .unregisterOnSharedPreferenceChangeListener(preferenceChangeListener)
+
+        // Unregister clipboard listener
+        clipboardManager?.removePrimaryClipChangedListener(clipboardListener)
 
         // Release sound and haptic resources
         SoundManager.release()
@@ -268,7 +325,12 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
             setOnSuggestionClickListener { word ->
                 commitSuggestion(word)
             }
+            setOnPasteClickListener {
+                pasteFromClipboard()
+            }
         }
+        // Initial clipboard check
+        updateClipboardText()
         verticalContainer.addView(suggestionBar, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
@@ -496,14 +558,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
             val manager = suggestionManager
 
             // Clear suggestions if no input connection or manager not ready
-            if (ic == null || manager == null || !manager.isReady) {
-                suggestionBar?.clearSuggestions()
-                return@Runnable
-            }
-
-            // Clear suggestions for non-Myanmar keyboards (but bar stays visible)
-            val localeId = getLocaleId()
-            if (localeId !in 2..7 && localeId != FLICK_KEYBOARD_ID) {
+            if (ic == null || manager == null) {
                 suggestionBar?.clearSuggestions()
                 return@Runnable
             }
@@ -514,7 +569,42 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                 return@Runnable
             }
 
+            val localeId = getLocaleId()
             val textBefore = ic.getTextBeforeCursor(TEXT_BEFORE_CURSOR_LENGTH, 0)?.toString() ?: ""
+
+            // Handle English suggestions (locale 1)
+            if (localeId == 1) {
+                if (!englishSuggestionsEnabled || !manager.isEnglishReady) {
+                    suggestionBar?.clearSuggestions()
+                    return@Runnable
+                }
+
+                if (textBefore.isEmpty()) {
+                    suggestionBar?.clearSuggestions()
+                    return@Runnable
+                }
+
+                var suggestions = manager.getEnglishSuggestions(textBefore)
+
+                // Filter out skipped words
+                autoCorrector?.let { corrector ->
+                    suggestions = corrector.filterSkipped(suggestions)
+                }
+
+                suggestionBar?.setSuggestions(suggestions)
+                return@Runnable
+            }
+
+            // Handle Myanmar suggestions (locale 2-7 and flick)
+            if (localeId !in 2..7 && localeId != FLICK_KEYBOARD_ID) {
+                suggestionBar?.clearSuggestions()
+                return@Runnable
+            }
+
+            if (!manager.isReady) {
+                suggestionBar?.clearSuggestions()
+                return@Runnable
+            }
 
             // Clear suggestions if no Myanmar text
             if (textBefore.isEmpty() || !SyllableBreaker.containsMyanmarText(textBefore)) {
@@ -538,14 +628,30 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         val ic = currentInputConnection ?: return
         val manager = suggestionManager ?: return
 
+        val localeId = getLocaleId()
         val textBefore = ic.getTextBeforeCursor(TEXT_BEFORE_CURSOR_LENGTH, 0)?.toString() ?: ""
-        val replaceLength = manager.getReplacementLength(textBefore, word)
+
+        val replaceLength = if (localeId == 1) {
+            // English - replace current word
+            manager.getEnglishReplacementLength(textBefore)
+        } else {
+            // Myanmar - use existing logic
+            manager.getReplacementLength(textBefore, word)
+        }
 
         if (replaceLength > 0) {
             ic.deleteSurroundingText(replaceLength, 0)
         }
 
-        ic.commitText(word, 1)
+        // For English, add space after word
+        val commitText = if (localeId == 1) "$word " else word
+        ic.commitText(commitText, 1)
+
+        // Track committed suggestion for skip-after-delete
+        if (localeId == 1) {
+            autoCorrector?.onSuggestionCommitted(word)
+            lastSuggestionWord = word
+        }
 
         // Play feedback
         if (KeyboardConfig.isSoundOn()) {
@@ -558,6 +664,49 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         // Clear suggestions and trigger new update
         suggestionBar?.clearSuggestions()
         updateSuggestions()
+    }
+
+    /**
+     * Update the clipboard text shown in suggestion bar when empty.
+     */
+    private fun updateClipboardText() {
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+        val clip = clipboard?.primaryClip
+        val text = if (clip != null && clip.itemCount > 0) {
+            clip.getItemAt(0)?.text?.toString()
+        } else {
+            null
+        }
+        suggestionBar?.setClipboardText(text)
+    }
+
+    /**
+     * Paste text from clipboard.
+     */
+    private fun pasteFromClipboard() {
+        val ic = currentInputConnection ?: return
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+        val clip = clipboard?.primaryClip
+        val text = if (clip != null && clip.itemCount > 0) {
+            clip.getItemAt(0)?.text?.toString()
+        } else {
+            null
+        }
+
+        if (!text.isNullOrEmpty()) {
+            ic.commitText(text, 1)
+
+            // Play feedback
+            if (KeyboardConfig.isSoundOn()) {
+                SoundManager.playClick(this, 0)
+            }
+            if (KeyboardConfig.isHapticEnabled()) {
+                HapticManager.performHapticFeedback(this)
+            }
+
+            // Update suggestions
+            updateSuggestions()
+        }
     }
 
     /**
@@ -605,8 +754,64 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
             applySubtype(savedSubtypeId)
         }
 
+        // Reset autocorrector session for new input field
+        // (skipped words will reappear in new sessions)
+        autoCorrector?.resetSession()
+        lastSuggestionWord = null
+
+        // Reset suggestion bar state for new input field
+        suggestionBar?.resetState()
+
+        // Update clipboard text for paste suggestion
+        updateClipboardText()
+
+        // Auto-shift for English keyboard at start of text field
+        // (except for email, URI, password fields)
+        if (autoCapitalizeEnabled && shouldAutoShiftOnStart(info)) {
+            shiftByLocale()
+        }
+
         // Update suggestions for any existing text
         updateSuggestions()
+    }
+
+    /**
+     * Check if keyboard should auto-shift at start of input.
+     * Returns true for English keyboard at start of normal text fields.
+     */
+    private fun shouldAutoShiftOnStart(info: EditorInfo?): Boolean {
+        if (info == null) return false
+
+        // Only auto-shift for English keyboard
+        val localeId = getLocaleId()
+        if (localeId != 1) return false
+
+        // Check if cursor is at start of text field
+        val ic = currentInputConnection ?: return false
+        val textBefore = ic.getTextBeforeCursor(1, 0)?.toString() ?: ""
+        if (textBefore.isNotEmpty()) return false  // Not at start
+
+        // Check input type - don't auto-shift for certain types
+        val inputType = info.inputType and android.text.InputType.TYPE_MASK_CLASS
+        val variation = info.inputType and android.text.InputType.TYPE_MASK_VARIATION
+
+        // Skip for non-text types
+        if (inputType != android.text.InputType.TYPE_CLASS_TEXT) return false
+
+        // Skip for email, URI, password, and other special fields
+        val skipVariations = listOf(
+            android.text.InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS,
+            android.text.InputType.TYPE_TEXT_VARIATION_EMAIL_SUBJECT,
+            android.text.InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS,
+            android.text.InputType.TYPE_TEXT_VARIATION_URI,
+            android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD,
+            android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD,
+            android.text.InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD
+        )
+
+        if (variation in skipVariations) return false
+
+        return true
     }
 
     /**
@@ -806,13 +1011,22 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
             }
             else -> {
                 var code = primaryCode.toChar()
+                val localeId = getLocaleId()
+
+                // Auto-capitalize for English
+                if (localeId == 1 && autoCapitalizeEnabled && Character.isLetter(code)) {
+                    val capitalizedCode = autoCapitalizer?.capitalizeIfNeeded(primaryCode, ic)
+                    if (capitalizedCode != null && capitalizedCode != primaryCode) {
+                        code = capitalizedCode.toChar()
+                    }
+                }
+
                 if (Character.isLetter(code) && caps) {
                     code = Character.toUpperCase(code)
                 }
                 var cText = code.toString()
 
                 // Check for double-tap on Myanmar keyboard
-                val localeId = getLocaleId()
                 if (localeId == 2 && KeyboardConfig.isDoubleTap()) {
                     val alternateCode = currentInputHandler.checkDoubleTap(primaryCode, keyCodes)
                     if (alternateCode != -1) {
@@ -874,22 +1088,95 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                     cText
                 }
 
+                // Smart punctuation: if punctuation after space, move punctuation before space
+                if (localeId == 1 && isSmartPunctuation(code)) {
+                    if (handleSmartPunctuation(ic, code)) {
+                        // Smart punctuation handled, skip normal commit
+                        // Don't unshift if caps lock is on
+                        if (shifted && !capsLock) {
+                            unshiftByLocale()
+                        }
+                        updateSuggestions()
+                        return
+                    }
+                }
+
                 ic.commitText(cText, 1)
-                if (shifted) {
+
+                // For English, fix standalone "i" and contractions after space
+                if (localeId == 1 && autoCapitalizeEnabled && cText == " ") {
+                    autoCapitalizer?.fixStandaloneI(ic, ' ')
+                    autoCorrector?.correctContraction(ic)
+                }
+
+                // Clear autocorrector tracking when typing (not deleting)
+                if (localeId == 1) {
+                    autoCorrector?.onCharacterTyped()
+                }
+
+                // Don't unshift if caps lock is on (English only)
+                if (shifted && !(localeId == 1 && capsLock)) {
                     unshiftByLocale()
                 }
+
+                // Sync shift state with auto-capitalization (after unshift)
+                syncAutoShiftState()
+
                 updateSuggestions()
             }
         }
     }
 
     private fun handleDeleteKey(ic: InputConnection) {
+        val localeId = getLocaleId()
+
+        // For English, track deletions for skip-after-delete
+        if (localeId == 1) {
+            val textBefore = ic.getTextBeforeCursor(TEXT_BEFORE_CURSOR_LENGTH, 0)?.toString() ?: ""
+            autoCorrector?.onDelete(textBefore, 1)
+        }
+
         if (currentInputHandler is BamarInputHandler && KeyboardConfig.isPrimeBookOn() && KeyboardConfig.isDoubleTap()) {
             (currentInputHandler as BamarInputHandler).handleSingleDelete(ic)
         } else {
             DeleteHandler.deleteChar(ic)
         }
+
+        // Sync shift state after delete (might be back at sentence start)
+        syncAutoShiftState()
+
         updateSuggestions()
+    }
+
+    /**
+     * Check if character is a punctuation that should trigger smart handling.
+     * These are punctuation marks that typically follow text without a space before.
+     */
+    private fun isSmartPunctuation(char: Char): Boolean {
+        return char in listOf('.', ',', '!', '?', ';', ':', ')', ']', '}', '\'', '"')
+    }
+
+    /**
+     * Handle smart punctuation: if there's a space before cursor,
+     * delete the space, insert punctuation, then add space after.
+     *
+     * Example: "Hello |" + "." -> "Hello. |"
+     *
+     * @return true if smart punctuation was handled, false otherwise
+     */
+    private fun handleSmartPunctuation(ic: InputConnection, punctuation: Char): Boolean {
+        val textBefore = ic.getTextBeforeCursor(1, 0)?.toString() ?: return false
+
+        // Check if there's a space before cursor
+        if (textBefore == " ") {
+            // Delete the space
+            ic.deleteSurroundingText(1, 0)
+            // Insert punctuation + space
+            ic.commitText("$punctuation ", 1)
+            return true
+        }
+
+        return false
     }
 
     private fun handleSymByLocale() {
@@ -922,10 +1209,34 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
     }
 
     private fun handleShift() {
-        if (!shifted) {
-            shiftByLocale()
+        val localeId = getLocaleId()
+        val currentTime = System.currentTimeMillis()
+
+        // For English keyboard, handle caps lock (double-tap)
+        if (localeId == 1) {
+            if (capsLock) {
+                // Already in caps lock, turn it off
+                capsLock = false
+                unshiftByLocale()
+            } else if (shifted && (currentTime - lastShiftTime) < DOUBLE_TAP_TIMEOUT_MS) {
+                // Double-tap detected while shifted - enable caps lock
+                capsLock = true
+                // Keep shifted state, keyboard already shows capitals
+            } else if (!shifted) {
+                // First tap - shift
+                shiftByLocale()
+                lastShiftTime = currentTime
+            } else {
+                // Shifted but not double-tap - unshift
+                unshiftByLocale()
+            }
         } else {
-            unshiftByLocale()
+            // Non-English keyboards - normal shift behavior
+            if (!shifted) {
+                shiftByLocale()
+            } else {
+                unshiftByLocale()
+            }
         }
     }
 
@@ -934,9 +1245,18 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
             kv?.keyboard = symShiftedKeyboard
             kv?.keyboard?.isShifted = true
         } else {
-            getShiftedKeyboard(getLocaleId())?.let { shiftedKeyboard ->
-                kv?.keyboard = shiftedKeyboard
+            val localeId = getLocaleId()
+            if (localeId == 1) {
+                // English - just set shifted state and update display
                 kv?.keyboard?.isShifted = true
+                caps = true
+                kv?.invalidateAllKeys()
+            } else {
+                // Other languages - load shifted keyboard layout
+                getShiftedKeyboard(localeId)?.let { shiftedKeyboard ->
+                    kv?.keyboard = shiftedKeyboard
+                    kv?.keyboard?.isShifted = true
+                }
             }
         }
         shifted = true
@@ -955,6 +1275,27 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
             }
         }
         shifted = false
+    }
+
+    /**
+     * Sync keyboard shift state with auto-capitalization.
+     * If the next character should be capitalized, shift the keyboard.
+     * Only applies to English keyboard when auto-capitalize is enabled.
+     */
+    private fun syncAutoShiftState() {
+        val localeId = getLocaleId()
+        if (localeId != 1) return  // Only for English
+        if (!autoCapitalizeEnabled) return
+        if (capsLock) return  // Don't interfere with caps lock
+
+        val ic = currentInputConnection ?: return
+        val shouldShift = autoCapitalizer?.shouldCapitalize(ic) ?: false
+
+        if (shouldShift && !shifted) {
+            shiftByLocale()
+        } else if (!shouldShift && shifted && !capsLock) {
+            // Don't auto-unshift here - let normal flow handle it
+        }
     }
 
     private fun getLocaleId(): Int {

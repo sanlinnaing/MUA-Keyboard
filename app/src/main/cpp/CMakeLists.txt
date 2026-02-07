@@ -19,7 +19,15 @@ add_library(myanmar_lstm SHARED
 )
 target_link_options(myanmar_lstm PRIVATE "-Wl,-z,max-page-size=16384")
 
+# English N-gram library for next word prediction
+add_library(english_ngram SHARED
+    ngram_engine.cpp
+    ngram_jni.cpp
+)
+target_link_options(english_ngram PRIVATE "-Wl,-z,max-page-size=16384")
+
 # Find and link Android log library
 find_library(log-lib log)
 target_link_libraries(myanmar_trie ${log-lib})
 target_link_libraries(myanmar_lstm ${log-lib})
+target_link_libraries(english_ngram ${log-lib})

@@ -81,6 +81,19 @@
         android:summary="@string/choose_keyboard_summ"
         android:title="@string/choose_keyboard_title" >
     </Preference>
+    <PreferenceCategory android:title="@string/english_typing_category">
+        <CheckBoxPreference
+            android:key="english_suggestions"
+            android:defaultValue="true"
+            android:title="@string/english_suggestions_title"
+            android:summary="@string/english_suggestions_summ" />
+        <CheckBoxPreference
+            android:key="auto_capitalize"
+            android:defaultValue="true"
+            android:title="@string/auto_capitalize_title"
+            android:summary="@string/auto_capitalize_summ" />
+    </PreferenceCategory>
+
     <Preference android:title="@string/faq" >
         <intent
             android:action="android.intent.action.VIEW"

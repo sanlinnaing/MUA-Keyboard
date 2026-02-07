@@ -50,4 +50,11 @@
     <string name="suggestion_order_title">Suggestion Order (Both mode)</string>
     <string name="suggestion_order_summ">How to combine LSTM and Trie suggestions</string>
 
+    <!-- English Typing -->
+    <string name="english_typing_category">English Typing</string>
+    <string name="english_suggestions_title">Word Suggestions</string>
+    <string name="english_suggestions_summ">Show word suggestions while typing English</string>
+    <string name="auto_capitalize_title">Auto-Capitalize</string>
+    <string name="auto_capitalize_summ">Capitalize first letter after sentences and fix \"i\" to \"I\"</string>
+
 </resources>

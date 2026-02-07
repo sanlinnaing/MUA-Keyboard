@@ -3,10 +3,13 @@ package com.sanlin.mkeyboard.view
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
+import android.text.TextUtils
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
+import android.util.Log
+import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -17,15 +20,21 @@ import com.sanlin.mkeyboard.suggestion.Suggestion
 /**
  * A horizontal scrollable bar that displays word suggestions.
  * Suggestions are shown as chips that can be tapped to insert the word.
+ * Clipboard icon is shown on the left when clipboard has content.
  */
 class SuggestionBarView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
-) : HorizontalScrollView(context, attrs, defStyleAttr) {
+) : LinearLayout(context, attrs, defStyleAttr) {
 
+    private val clipboardButton: TextView
+    private val scrollView: HorizontalScrollView
     private val chipContainer: LinearLayout
     private var onSuggestionClickListener: ((String) -> Unit)? = null
+    private var onPasteClickListener: (() -> Unit)? = null
+    private var clipboardText: String? = null
+    private var isInitialState = true  // True until user types something
 
     // Dimensions
     private val barHeight: Int
@@ -37,30 +46,65 @@ class SuggestionBarView @JvmOverloads constructor(
 
     init {
         // Calculate dimensions based on density
-        // Myanmar characters are taller than English, so we need more height
         val density = resources.displayMetrics.density
-        barHeight = (48 * density).toInt()  // Increased for Myanmar text
-        chipPaddingHorizontal = (12 * density).toInt()  // Reduced horizontal padding
-        chipPaddingVertical = (4 * density).toInt()  // Reduced vertical padding
-        chipMargin = (4 * density).toInt()  // Reduced margin
+        barHeight = (48 * density).toInt()
+        chipPaddingHorizontal = (12 * density).toInt()
+        chipPaddingVertical = (4 * density).toInt()
+        chipMargin = (4 * density).toInt()
         chipTextSize = 16f
         barPaddingHorizontal = (8 * density).toInt()
 
-        // Configure scroll view
-        isHorizontalScrollBarEnabled = false
-        isFillViewport = true
-        overScrollMode = OVER_SCROLL_NEVER
+        orientation = HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
 
-        // Create container for chips
+        // Create clipboard button (left side, initially hidden)
+        clipboardButton = TextView(context).apply {
+            text = "\uD83D\uDCCB"  // Clipboard emoji
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
+            gravity = Gravity.CENTER
+            setPadding(chipPaddingHorizontal, chipPaddingVertical, chipPaddingHorizontal, chipPaddingVertical)
+            visibility = View.GONE
+
+            layoutParams = LayoutParams(
+                LayoutParams.WRAP_CONTENT,
+                LayoutParams.WRAP_CONTENT
+            ).apply {
+                setMargins(chipMargin, 0, 0, 0)
+                gravity = Gravity.CENTER_VERTICAL
+            }
+
+            isClickable = true
+            isFocusable = true
+
+            setOnClickListener {
+                onPasteClickListener?.invoke()
+            }
+        }
+        addView(clipboardButton)
+
+        // Create scroll view for suggestions
+        scrollView = HorizontalScrollView(context).apply {
+            isHorizontalScrollBarEnabled = false
+            isFillViewport = true
+            overScrollMode = OVER_SCROLL_NEVER
+        }
+
+        // Create container for chips inside scroll view
         chipContainer = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
+            orientation = HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(barPaddingHorizontal, 0, barPaddingHorizontal, 0)
         }
 
-        addView(chipContainer, LayoutParams(
-            LayoutParams.WRAP_CONTENT,
-            LayoutParams.MATCH_PARENT
+        scrollView.addView(chipContainer, FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.WRAP_CONTENT,
+            FrameLayout.LayoutParams.MATCH_PARENT
+        ))
+
+        addView(scrollView, LayoutParams(
+            0,
+            LayoutParams.MATCH_PARENT,
+            1f  // Take remaining space
         ))
 
         // Apply theme
@@ -75,6 +119,9 @@ class SuggestionBarView @JvmOverloads constructor(
         val isLightTheme = isLightTheme(theme)
 
         setBackgroundColor(getBarBackgroundColor(theme))
+
+        // Update clipboard button theme
+        clipboardButton.setBackgroundResource(getChipBackgroundRes(isLightTheme))
 
         // Update existing chips
         for (i in 0 until chipContainer.childCount) {
@@ -141,27 +188,139 @@ class SuggestionBarView @JvmOverloads constructor(
      * @param suggestions list of suggestions
      */
     fun setSuggestions(suggestions: List<Suggestion>) {
+        Log.d("SuggestionBarView", "setSuggestions: ${suggestions.size} suggestions")
         chipContainer.removeAllViews()
 
-        // Bar is always visible, just empty when no suggestions
+        // User has started typing if we're getting suggestions
+        if (suggestions.isNotEmpty()) {
+            isInitialState = false
+        }
+
+        // Update clipboard button visibility
+        updateClipboardButton()
+
+        if (suggestions.isEmpty()) {
+            // Show centered paste chip only in initial state
+            if (isInitialState) {
+                showInitialClipboardChip()
+            }
+            return
+        }
+
         val isLight = isLightTheme(KeyboardConfig.getCurrentTheme())
 
-        for (suggestion in suggestions) {
+        // Add chips with flexible spacers for centering
+        for ((index, suggestion) in suggestions.withIndex()) {
+            if (index == 0) {
+                chipContainer.addView(createFlexSpacer())
+            }
+
             val chip = createChip(suggestion.word, isLight)
             chipContainer.addView(chip)
+
+            chipContainer.addView(createFlexSpacer())
         }
 
-        // Center chips when fewer than 4 suggestions
-        if (suggestions.size < 4) {
-            chipContainer.gravity = Gravity.CENTER
-            isFillViewport = true
-        } else {
-            chipContainer.gravity = Gravity.CENTER_VERTICAL or Gravity.START
-            isFillViewport = false
-        }
+        scrollView.isFillViewport = true
+        chipContainer.gravity = Gravity.CENTER_VERTICAL
+        scrollView.scrollTo(0, 0)
+    }
 
-        // Scroll to start
-        scrollTo(0, 0)
+    /**
+     * Set the clipboard text.
+     */
+    fun setClipboardText(text: String?) {
+        clipboardText = text?.trim()?.takeIf { it.isNotEmpty() }
+        updateClipboardButton()
+    }
+
+    /**
+     * Update clipboard button visibility.
+     */
+    private fun updateClipboardButton() {
+        val hasClipboard = !clipboardText.isNullOrEmpty()
+        // Show clipboard button when not in initial state and has clipboard content
+        clipboardButton.visibility = if (hasClipboard && !isInitialState) View.VISIBLE else View.GONE
+    }
+
+    /**
+     * Show centered paste chip with clipboard preview (initial state only).
+     */
+    private fun showInitialClipboardChip() {
+        val text = clipboardText
+        if (text.isNullOrEmpty()) return
+
+        val isLight = isLightTheme(KeyboardConfig.getCurrentTheme())
+
+        chipContainer.addView(createFlexSpacer())
+
+        val pasteChip = createPasteChip(text, isLight)
+        chipContainer.addView(pasteChip)
+
+        chipContainer.addView(createFlexSpacer())
+
+        scrollView.isFillViewport = true
+        chipContainer.gravity = Gravity.CENTER_VERTICAL
+    }
+
+    /**
+     * Set listener for paste button clicks.
+     */
+    fun setOnPasteClickListener(listener: () -> Unit) {
+        onPasteClickListener = listener
+    }
+
+    /**
+     * Create a paste chip showing clipboard preview.
+     */
+    private fun createPasteChip(clipText: String, isLight: Boolean): TextView {
+        val density = resources.displayMetrics.density
+        val chipMaxWidth = (200 * density).toInt()
+
+        return TextView(context).apply {
+            val displayText = if (clipText.length > 30) {
+                clipText.take(30) + "…"
+            } else {
+                clipText
+            }
+            text = "\uD83D\uDCCB $displayText"
+
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, chipTextSize - 1)
+            setTypeface(typeface, Typeface.NORMAL)
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(chipPaddingHorizontal, chipPaddingVertical, chipPaddingHorizontal, chipPaddingVertical)
+
+            maxLines = 1
+            ellipsize = TextUtils.TruncateAt.END
+            setMaxWidth(chipMaxWidth)
+
+            applyChipTheme(this, isLight)
+            alpha = 0.85f
+
+            layoutParams = LayoutParams(
+                LayoutParams.WRAP_CONTENT,
+                LayoutParams.WRAP_CONTENT
+            ).apply {
+                setMargins(chipMargin, chipMargin, chipMargin, chipMargin)
+                gravity = Gravity.CENTER_VERTICAL
+            }
+
+            isClickable = true
+            isFocusable = true
+
+            setOnClickListener {
+                onPasteClickListener?.invoke()
+            }
+        }
+    }
+
+    /**
+     * Create a flexible spacer view.
+     */
+    private fun createFlexSpacer(): View {
+        return View(context).apply {
+            layoutParams = LayoutParams(0, 1, 1f)
+        }
     }
 
     /**
@@ -169,14 +328,25 @@ class SuggestionBarView @JvmOverloads constructor(
      */
     fun clearSuggestions() {
         chipContainer.removeAllViews()
-        // Bar stays visible, just empty - keep centered
-        chipContainer.gravity = Gravity.CENTER
-        isFillViewport = true
+        updateClipboardButton()
+        if (isInitialState) {
+            showInitialClipboardChip()
+        }
+        scrollView.isFillViewport = true
+    }
+
+    /**
+     * Reset to initial state (call when input field changes).
+     */
+    fun resetState() {
+        isInitialState = true
+        chipContainer.removeAllViews()
+        updateClipboardButton()
+        showInitialClipboardChip()
     }
 
     /**
      * Set the listener for suggestion clicks.
-     * @param listener callback that receives the selected word
      */
     fun setOnSuggestionClickListener(listener: (String) -> Unit) {
         onSuggestionClickListener = listener
@@ -191,19 +361,16 @@ class SuggestionBarView @JvmOverloads constructor(
             setPadding(chipPaddingHorizontal, chipPaddingVertical, chipPaddingHorizontal, chipPaddingVertical)
             applyChipTheme(this, isLight)
 
-            // Ensure Myanmar text has enough line height
             includeFontPadding = true
 
-            // Set layout params with margins
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
+            layoutParams = LayoutParams(
+                LayoutParams.WRAP_CONTENT,
+                LayoutParams.WRAP_CONTENT
             ).apply {
                 setMargins(chipMargin, chipMargin, chipMargin, chipMargin)
                 gravity = Gravity.CENTER_VERTICAL
             }
 
-            // Make clickable
             isClickable = true
             isFocusable = true
 

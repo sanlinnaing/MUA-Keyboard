@@ -7,6 +7,7 @@ import androidx.preference.PreferenceManager
 /**
  * Manages suggestion engines and provides a unified interface.
  * Supports switching between word (Trie), syllable (LSTM), or combined modes.
+ * Also supports English suggestions via SymSpell.
  */
 class SuggestionManager(private val context: Context) {
 
@@ -17,6 +18,8 @@ class SuggestionManager(private val context: Context) {
 
     private var trieEngine: SuggestionEngine? = null
     private var lstmEngine: LstmSuggestionEngine? = null
+    private var ngramEngine: NgramSuggestionEngine? = null  // N-gram based English predictions (fallback)
+    private var englishLstmEngine: EnglishLstmSuggestionEngine? = null  // LSTM-based English predictions
     private var currentMethod: SuggestionMethod = SuggestionMethod.WORD
     private var currentOrder: SuggestionOrder = SuggestionOrder.LSTM_FIRST
 
@@ -271,7 +274,95 @@ class SuggestionManager(private val context: Context) {
     fun release() {
         trieEngine?.release()
         lstmEngine?.release()
+        ngramEngine?.release()
+        englishLstmEngine?.release()
         trieEngine = null
         lstmEngine = null
+        ngramEngine = null
+        englishLstmEngine = null
+    }
+
+    // ============ English Support (LSTM with n-gram fallback) ============
+
+    /**
+     * Initialize the English suggestion engine.
+     * Tries LSTM first (if model files exist), falls back to n-gram.
+     * Should be called from a background thread.
+     */
+    fun initializeEnglish(): Boolean {
+        // Try LSTM first (preferred method)
+        if (englishLstmEngine == null) {
+            englishLstmEngine = EnglishLstmSuggestionEngine(context)
+            if (englishLstmEngine?.initialize() == true) {
+                Log.i(TAG, "English LSTM engine initialized")
+                return true
+            } else {
+                Log.w(TAG, "English LSTM not available, trying n-gram fallback")
+                englishLstmEngine = null
+            }
+        } else if (englishLstmEngine?.isReady == true) {
+            return true
+        }
+
+        // Fall back to n-gram
+        if (ngramEngine == null) {
+            ngramEngine = NgramSuggestionEngine(context)
+            val success = ngramEngine?.initialize() ?: false
+
+            if (success) {
+                Log.i(TAG, "English n-gram engine initialized (fallback)")
+            } else {
+                Log.e(TAG, "Failed to initialize English n-gram engine")
+                ngramEngine = null
+            }
+
+            return success
+        }
+
+        return ngramEngine?.isReady == true
+    }
+
+    /**
+     * Check if English engine is ready.
+     */
+    val isEnglishReady: Boolean
+        get() = englishLstmEngine?.isReady == true || ngramEngine?.isReady == true
+
+    /**
+     * Get English suggestions for the given text.
+     * Uses LSTM if available, otherwise n-gram.
+     */
+    fun getEnglishSuggestions(text: String): List<Suggestion> {
+        // Try LSTM first
+        val lstmEngine = englishLstmEngine
+        if (lstmEngine?.isReady == true) {
+            val suggestions = lstmEngine.getSuggestions(text, MAX_SUGGESTIONS)
+            if (suggestions.isNotEmpty()) {
+                Log.d(TAG, "English LSTM suggestions for '$text': ${suggestions.size} results")
+                return suggestions
+            }
+        }
+
+        // Fall back to n-gram
+        val nEngine = ngramEngine
+        if (nEngine?.isReady == true) {
+            val suggestions = nEngine.getSuggestions(text, MAX_SUGGESTIONS)
+            Log.d(TAG, "English n-gram suggestions for '$text': ${suggestions.size} results")
+            return suggestions
+        }
+
+        Log.d(TAG, "No English engine available")
+        return emptyList()
+    }
+
+    /**
+     * Get replacement length for English text (current word length).
+     */
+    fun getEnglishReplacementLength(text: String): Int {
+        // Use whichever engine is active
+        if (englishLstmEngine?.isReady == true) {
+            return englishLstmEngine?.getReplacementLength(text) ?: 0
+        }
+        return ngramEngine?.getReplacementLength(text) ?: 0
     }
 }
