@@ -1141,9 +1141,17 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                     autoCapitalizer?.fixStandaloneI(ic, ' ')
                 }
 
-                // For English, autocorrect contractions after space
+                // For English, autocorrect contractions and spelling after space
                 if (localeId == 1 && autoCorrectEnabled && cText == " ") {
-                    autoCorrector?.correctContraction(ic)
+                    // Try contraction correction first
+                    val contractionCorrected = autoCorrector?.correctContraction(ic) ?: false
+
+                    // If no contraction, try spelling correction
+                    if (!contractionCorrected) {
+                        autoCorrector?.correctSpelling(ic) { word ->
+                            suggestionManager?.getSpellingCorrection(word)
+                        }
+                    }
                 }
 
                 // Clear autocorrector tracking when typing (not deleting)

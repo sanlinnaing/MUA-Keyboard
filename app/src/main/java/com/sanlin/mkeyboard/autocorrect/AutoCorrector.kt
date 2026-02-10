@@ -214,6 +214,55 @@ class AutoCorrector {
     }
 
     /**
+     * Check and correct spelling when space is typed.
+     * Call this after committing a space, if contraction correction didn't apply.
+     *
+     * @param ic the InputConnection
+     * @param getCorrection function to get spelling correction for a word
+     * @return true if a correction was made
+     */
+    fun correctSpelling(ic: InputConnection?, getCorrection: (String) -> String?): Boolean {
+        if (ic == null) return false
+
+        // Get the word before the space we just typed
+        val textBefore = ic.getTextBeforeCursor(30, 0)?.toString() ?: return false
+        if (textBefore.length < 2) return false
+
+        // Find the last word (before the trailing space)
+        val trimmed = textBefore.trimEnd()
+        val lastSpaceIndex = trimmed.lastIndexOf(' ')
+        val lastWord = if (lastSpaceIndex >= 0) {
+            trimmed.substring(lastSpaceIndex + 1)
+        } else {
+            trimmed
+        }
+
+        // Skip short words (less likely to be typos, more likely intentional)
+        if (lastWord.length < 3) return false
+
+        // Skip words with numbers or special characters
+        if (!lastWord.all { it.isLetter() }) return false
+
+        // Get spelling correction
+        val correction = getCorrection(lastWord) ?: return false
+
+        // Check if this correction was skipped by user
+        if (isSkipped(correction)) return false
+
+        // Calculate how many characters to delete (word + space)
+        val deleteLength = lastWord.length + 1  // +1 for the space
+
+        // Delete the wrong word and space
+        ic.deleteSurroundingText(deleteLength, 0)
+
+        // Insert the corrected word with space
+        val correctedWithCase = matchCase(correction, lastWord)
+        ic.commitText("$correctedWithCase ", 1)
+
+        return true
+    }
+
+    /**
      * Match case of original word to correction.
      */
     private fun matchCase(correction: String, original: String): String {

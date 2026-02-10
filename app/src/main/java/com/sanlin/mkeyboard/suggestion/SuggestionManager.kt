@@ -20,6 +20,7 @@ class SuggestionManager(private val context: Context) {
     private var lstmEngine: LstmSuggestionEngine? = null
     private var ngramEngine: NgramSuggestionEngine? = null  // N-gram based English predictions (fallback)
     private var englishLstmEngine: EnglishLstmSuggestionEngine? = null  // LSTM-based English predictions
+    private var symSpellEngine: EnglishSuggestionEngine? = null  // SymSpell for spelling correction
     private var currentMethod: SuggestionMethod = SuggestionMethod.WORD
     private var currentOrder: SuggestionOrder = SuggestionOrder.LSTM_FIRST
 
@@ -287,27 +288,30 @@ class SuggestionManager(private val context: Context) {
     /**
      * Initialize the English suggestion engine.
      * Tries LSTM first (if model files exist), falls back to n-gram.
+     * Also initializes SymSpell for spelling correction.
      * Should be called from a background thread.
      */
     fun initializeEnglish(): Boolean {
-        // Try LSTM first (preferred method)
+        var success = false
+
+        // Try LSTM first (preferred method for suggestions)
         if (englishLstmEngine == null) {
             englishLstmEngine = EnglishLstmSuggestionEngine(context)
             if (englishLstmEngine?.initialize() == true) {
                 Log.i(TAG, "English LSTM engine initialized")
-                return true
+                success = true
             } else {
                 Log.w(TAG, "English LSTM not available, trying n-gram fallback")
                 englishLstmEngine = null
             }
         } else if (englishLstmEngine?.isReady == true) {
-            return true
+            success = true
         }
 
-        // Fall back to n-gram
-        if (ngramEngine == null) {
+        // Fall back to n-gram if LSTM not available
+        if (!success && ngramEngine == null) {
             ngramEngine = NgramSuggestionEngine(context)
-            val success = ngramEngine?.initialize() ?: false
+            success = ngramEngine?.initialize() ?: false
 
             if (success) {
                 Log.i(TAG, "English n-gram engine initialized (fallback)")
@@ -315,11 +319,20 @@ class SuggestionManager(private val context: Context) {
                 Log.e(TAG, "Failed to initialize English n-gram engine")
                 ngramEngine = null
             }
-
-            return success
         }
 
-        return ngramEngine?.isReady == true
+        // Initialize SymSpell for spelling correction (independent of suggestions)
+        if (symSpellEngine == null) {
+            symSpellEngine = EnglishSuggestionEngine(context)
+            if (symSpellEngine?.initialize() == true) {
+                Log.i(TAG, "SymSpell engine initialized for spelling correction")
+            } else {
+                Log.w(TAG, "Failed to initialize SymSpell engine")
+                symSpellEngine = null
+            }
+        }
+
+        return success || ngramEngine?.isReady == true
     }
 
     /**
@@ -365,4 +378,18 @@ class SuggestionManager(private val context: Context) {
         }
         return ngramEngine?.getReplacementLength(text) ?: 0
     }
+
+    /**
+     * Get spelling correction for a word using SymSpell.
+     * Returns null if no correction needed or engine not ready.
+     */
+    fun getSpellingCorrection(word: String): String? {
+        return symSpellEngine?.getCorrection(word)
+    }
+
+    /**
+     * Check if spelling correction is available.
+     */
+    val isSpellingCorrectionReady: Boolean
+        get() = symSpellEngine?.isReady == true
 }
