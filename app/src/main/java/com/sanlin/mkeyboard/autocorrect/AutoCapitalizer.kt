@@ -81,19 +81,4 @@ class AutoCapitalizer {
 
         return false
     }
-
-    /**
-     * Capitalize a character if needed based on context.
-     *
-     * @param code the character code
-     * @param ic the InputConnection
-     * @return the (possibly capitalized) character code
-     */
-    fun capitalizeIfNeeded(code: Int, ic: InputConnection?): Int {
-        if (!Character.isLetter(code)) return code
-        if (shouldCapitalize(ic)) {
-            return Character.toUpperCase(code)
-        }
-        return code
-    }
 }

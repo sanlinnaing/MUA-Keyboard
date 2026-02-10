@@ -1018,14 +1018,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                 var code = primaryCode.toChar()
                 val localeId = getLocaleId()
 
-                // Auto-capitalize for English
-                if (localeId == 1 && autoCapitalizeEnabled && Character.isLetter(code)) {
-                    val capitalizedCode = autoCapitalizer?.capitalizeIfNeeded(primaryCode, ic)
-                    if (capitalizedCode != null && capitalizedCode != primaryCode) {
-                        code = capitalizedCode.toChar()
-                    }
-                }
-
+                // Apply shift if keyboard is in shifted state
                 if (Character.isLetter(code) && caps) {
                     code = Character.toUpperCase(code)
                 }
