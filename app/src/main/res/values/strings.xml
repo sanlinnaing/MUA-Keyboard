@@ -56,5 +56,7 @@
     <string name="english_suggestions_summ">Show word suggestions while typing English</string>
     <string name="auto_capitalize_title">Auto-Capitalize</string>
     <string name="auto_capitalize_summ">Capitalize first letter after sentences and fix \"i\" to \"I\"</string>
+    <string name="auto_correct_title">Auto-Correct</string>
+    <string name="auto_correct_summ">Fix common contractions (dont → don\'t, Im → I\'m)</string>
 
 </resources>

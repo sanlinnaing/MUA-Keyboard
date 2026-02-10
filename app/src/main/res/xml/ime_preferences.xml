@@ -92,6 +92,11 @@
             android:defaultValue="true"
             android:title="@string/auto_capitalize_title"
             android:summary="@string/auto_capitalize_summ" />
+        <CheckBoxPreference
+            android:key="auto_correct"
+            android:defaultValue="true"
+            android:title="@string/auto_correct_title"
+            android:summary="@string/auto_correct_summ" />
     </PreferenceCategory>
 
     <Preference android:title="@string/faq" >

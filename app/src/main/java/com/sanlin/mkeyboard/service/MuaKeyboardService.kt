@@ -80,6 +80,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
     private var autoCorrector: AutoCorrector? = null
     private var englishSuggestionsEnabled = true
     private var autoCapitalizeEnabled = true
+    private var autoCorrectEnabled = true
 
     // Clipboard
     private var clipboardManager: ClipboardManager? = null
@@ -122,6 +123,9 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
             }
             "auto_capitalize" -> {
                 autoCapitalizeEnabled = prefs.getBoolean("auto_capitalize", true)
+            }
+            "auto_correct" -> {
+                autoCorrectEnabled = prefs.getBoolean("auto_correct", true)
             }
         }
     }
@@ -190,6 +194,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         // Read English preferences
         englishSuggestionsEnabled = sharedPref.getBoolean("english_suggestions", true)
         autoCapitalizeEnabled = sharedPref.getBoolean("auto_capitalize", true)
+        autoCorrectEnabled = sharedPref.getBoolean("auto_correct", true)
 
         backgroundExecutor.execute {
             suggestionManager = SuggestionManager(this@MuaKeyboardService)
@@ -1131,9 +1136,13 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
 
                 ic.commitText(cText, 1)
 
-                // For English, fix standalone "i" and contractions after space
+                // For English, fix standalone "i" after space
                 if (localeId == 1 && autoCapitalizeEnabled && cText == " ") {
                     autoCapitalizer?.fixStandaloneI(ic, ' ')
+                }
+
+                // For English, autocorrect contractions after space
+                if (localeId == 1 && autoCorrectEnabled && cText == " ") {
                     autoCorrector?.correctContraction(ic)
                 }
 
