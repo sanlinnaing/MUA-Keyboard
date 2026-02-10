@@ -120,13 +120,18 @@ class EnglishSuggestionEngine(private val context: Context) : SuggestionProvider
         if (!isReady || word.isEmpty()) return null
 
         try {
+            // Use Closest verbosity to get the best edit-distance match
             val suggestions = spellChecker?.lookup(
                 word.lowercase(),
-                Verbosity.Top,
+                Verbosity.Closest,
                 MAX_EDIT_DISTANCE
             ) ?: return null
 
+            Log.d(TAG, "Spelling lookup for '$word': ${suggestions.size} suggestions")
+
             val topSuggestion = suggestions.firstOrNull() ?: return null
+
+            Log.d(TAG, "Top suggestion: '${topSuggestion.term}' (frequency: ${topSuggestion.frequency})")
 
             // Only suggest correction if it's different from input
             if (topSuggestion.term.lowercase() != word.lowercase()) {

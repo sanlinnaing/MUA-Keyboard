@@ -207,6 +207,9 @@ class AutoCorrector {
             val correctedWithCase = matchCase(correction, lastWord)
             ic.commitText("$correctedWithCase ", 1)
 
+            // Track the correction so user can skip it by deleting
+            onSuggestionCommitted(correctedWithCase)
+
             return true
         }
 
@@ -226,6 +229,7 @@ class AutoCorrector {
 
         // Get the word before the space we just typed
         val textBefore = ic.getTextBeforeCursor(30, 0)?.toString() ?: return false
+        android.util.Log.d("AutoCorrector", "correctSpelling: textBefore='$textBefore'")
         if (textBefore.length < 2) return false
 
         // Find the last word (before the trailing space)
@@ -237,6 +241,8 @@ class AutoCorrector {
             trimmed
         }
 
+        android.util.Log.d("AutoCorrector", "correctSpelling: lastWord='$lastWord'")
+
         // Skip short words (less likely to be typos, more likely intentional)
         if (lastWord.length < 3) return false
 
@@ -244,7 +250,9 @@ class AutoCorrector {
         if (!lastWord.all { it.isLetter() }) return false
 
         // Get spelling correction
-        val correction = getCorrection(lastWord) ?: return false
+        val correction = getCorrection(lastWord)
+        android.util.Log.d("AutoCorrector", "correctSpelling: correction for '$lastWord' = '$correction'")
+        if (correction == null) return false
 
         // Check if this correction was skipped by user
         if (isSkipped(correction)) return false
@@ -258,6 +266,9 @@ class AutoCorrector {
         // Insert the corrected word with space
         val correctedWithCase = matchCase(correction, lastWord)
         ic.commitText("$correctedWithCase ", 1)
+
+        // Track the correction so user can skip it by deleting
+        onSuggestionCommitted(correctedWithCase)
 
         return true
     }

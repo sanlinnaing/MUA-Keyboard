@@ -1117,11 +1117,16 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                 // Smart punctuation: if punctuation after space, move punctuation before space
                 if (localeId == 1 && isSmartPunctuation(code)) {
                     if (handleSmartPunctuation(ic, code)) {
-                        // Smart punctuation handled, skip normal commit
-                        // Don't unshift if caps lock is on
-                        if (shifted && !capsLock) {
-                            unshiftByLocale()
-                        }
+                        // Smart punctuation handled (includes syncAutoShiftState for sentence-ending)
+                        // Note: Don't unshift here - syncAutoShiftState handles shift state
+                        updateSuggestions()
+                        return
+                    }
+
+                    // For sentence-ending punctuation not after space, auto-add space
+                    if (handleSentenceEndingPunctuation(ic, code)) {
+                        // Sentence-ending punctuation handled (includes syncAutoShiftState)
+                        // Note: Don't unshift here - syncAutoShiftState handles shift state
                         updateSuggestions()
                         return
                     }
@@ -1135,20 +1140,25 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                 }
 
                 // For English, autocorrect contractions and spelling after space
+                var autocorrectionApplied = false
                 if (localeId == 1 && autoCorrectEnabled && cText == " ") {
                     // Try contraction correction first
                     val contractionCorrected = autoCorrector?.correctContraction(ic) ?: false
 
                     // If no contraction, try spelling correction
                     if (!contractionCorrected) {
-                        autoCorrector?.correctSpelling(ic) { word ->
+                        val spellingCorrected = autoCorrector?.correctSpelling(ic) { word ->
                             suggestionManager?.getSpellingCorrection(word)
-                        }
+                        } ?: false
+                        autocorrectionApplied = spellingCorrected
+                    } else {
+                        autocorrectionApplied = true
                     }
                 }
 
                 // Clear autocorrector tracking when typing (not deleting)
-                if (localeId == 1) {
+                // But don't clear if autocorrection just happened - we need to track for skip-after-delete
+                if (localeId == 1 && !autocorrectionApplied) {
                     autoCorrector?.onCharacterTyped()
                 }
 
@@ -1195,6 +1205,13 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
     }
 
     /**
+     * Check if punctuation is sentence-ending (should trigger auto-capitalize).
+     */
+    private fun isSentenceEndingPunctuation(char: Char): Boolean {
+        return char in listOf('.', '!', '?')
+    }
+
+    /**
      * Handle smart punctuation: if there's a space before cursor,
      * delete the space, insert punctuation, then add space after.
      *
@@ -1211,10 +1228,32 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
             ic.deleteSurroundingText(1, 0)
             // Insert punctuation + space
             ic.commitText("$punctuation ", 1)
+
+            // For sentence-ending punctuation, sync shift state (for auto-capitalize)
+            if (isSentenceEndingPunctuation(punctuation)) {
+                syncAutoShiftState()
+            }
             return true
         }
 
         return false
+    }
+
+    /**
+     * Handle sentence-ending punctuation: auto-add space and trigger shift.
+     * Called when . ! ? is typed directly (not after a space).
+     *
+     * @return true if handled, false otherwise
+     */
+    private fun handleSentenceEndingPunctuation(ic: InputConnection, punctuation: Char): Boolean {
+        if (!isSentenceEndingPunctuation(punctuation)) return false
+
+        // Commit punctuation + space
+        ic.commitText("$punctuation ", 1)
+
+        // Sync shift state for auto-capitalize
+        syncAutoShiftState()
+        return true
     }
 
     private fun handleSymByLocale() {
