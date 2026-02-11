@@ -11,6 +11,7 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputMethodManager
 import android.view.inputmethod.InputMethodSubtype
@@ -42,9 +43,11 @@ import com.sanlin.mkeyboard.keyboard.model.FlickKeyboard
 import com.sanlin.mkeyboard.keyboard.model.FlickKey
 import com.sanlin.mkeyboard.keyboard.model.FlickCharacter
 import com.sanlin.mkeyboard.keyboard.model.FlickDirection
+import com.sanlin.mkeyboard.suggestion.PersonalizationStorage
 import com.sanlin.mkeyboard.suggestion.SuggestionManager
 import com.sanlin.mkeyboard.suggestion.SuggestionMethod
 import com.sanlin.mkeyboard.suggestion.SyllableBreaker
+import com.sanlin.mkeyboard.suggestion.SyllableTrie
 import com.sanlin.mkeyboard.autocorrect.AutoCapitalizer
 import com.sanlin.mkeyboard.autocorrect.AutoCorrector
 import java.util.concurrent.Executors
@@ -81,6 +84,12 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
     private var englishSuggestionsEnabled = true
     private var autoCapitalizeEnabled = true
     private var autoCorrectEnabled = true
+    private var personalizationEnabled = true
+
+    // Composing state for word boundary detection (Myanmar User Dictionary)
+    private var isComposing = false
+    private var composingText = StringBuilder()
+    private var composingContextSyllables = listOf<String>()  // 2+ syllables before composing start
 
     // Clipboard
     private var clipboardManager: ClipboardManager? = null
@@ -105,12 +114,6 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                 suggestionBar?.clearSuggestions()
                 updateSuggestions()
             }
-            "suggestion_order" -> {
-                // Order change just needs to refresh suggestions
-                // The SuggestionManager reads the preference directly
-                suggestionBar?.clearSuggestions()
-                updateSuggestions()
-            }
             "english_suggestions" -> {
                 englishSuggestionsEnabled = prefs.getBoolean("english_suggestions", true)
                 if (englishSuggestionsEnabled && suggestionManager?.isEnglishReady != true) {
@@ -126,6 +129,17 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
             }
             "auto_correct" -> {
                 autoCorrectEnabled = prefs.getBoolean("auto_correct", true)
+            }
+            "personalization_enabled" -> {
+                personalizationEnabled = prefs.getBoolean("personalization_enabled", true)
+                suggestionManager?.setPersonalizationEnabled(personalizationEnabled)
+            }
+            "personalization_cleared_at" -> {
+                // Settings UI requested clear - wipe in-memory caches too
+                android.util.Log.i(TAG, "Clearing in-memory personalization and user dictionary")
+                suggestionManager?.clearPersonalizationHistory()
+                suggestionManager?.clearUserDictionary()
+                resetComposing()
             }
         }
     }
@@ -154,10 +168,20 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         private const val SUGGESTION_DEBOUNCE_MS = 100L
         private const val TEXT_BEFORE_CURSOR_LENGTH = 100
         private const val DOUBLE_TAP_TIMEOUT_MS = 400L  // Time window for double-tap
+
+        /**
+         * Static reference to the running service instance.
+         * Used by ImePreferencesActivity to read in-memory data without disk I/O.
+         * Set in onCreate(), cleared in onDestroy() to avoid memory leaks.
+         */
+        @JvmStatic
+        var instance: MuaKeyboardService? = null
+            private set
     }
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
         wordSeparators = resources.getString(R.string.word_separators)
         shanConsonants = resources.getString(R.string.shan_consonants)
         inputMethodManager = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
@@ -195,6 +219,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         englishSuggestionsEnabled = sharedPref.getBoolean("english_suggestions", true)
         autoCapitalizeEnabled = sharedPref.getBoolean("auto_capitalize", true)
         autoCorrectEnabled = sharedPref.getBoolean("auto_correct", true)
+        personalizationEnabled = sharedPref.getBoolean("personalization_enabled", true)
 
         backgroundExecutor.execute {
             suggestionManager = SuggestionManager(this@MuaKeyboardService)
@@ -214,10 +239,20 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                     }
                 }
             }
+
+            // Initialize personalization if enabled
+            if (personalizationEnabled) {
+                suggestionManager?.initializePersonalization()
+                suggestionManager?.setPersonalizationEnabled(true)
+            }
+
+            // Initialize User Dictionary for learning unknown words
+            suggestionManager?.initializeUserDictionary()
         }
     }
 
     override fun onDestroy() {
+        instance = null  // Clear static reference to avoid memory leak
         super.onDestroy()
         // Unregister preference listener
         PreferenceManager.getDefaultSharedPreferences(this)
@@ -229,6 +264,12 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         // Release sound and haptic resources
         SoundManager.release()
         HapticManager.release()
+
+        // Save personalization data before release
+        suggestionManager?.savePersonalization()
+
+        // Save user dictionary before release
+        suggestionManager?.saveUserDictionary()
 
         // Release suggestion engine
         suggestionManager?.release()
@@ -636,6 +677,11 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         val localeId = getLocaleId()
         val textBefore = ic.getTextBeforeCursor(TEXT_BEFORE_CURSOR_LENGTH, 0)?.toString() ?: ""
 
+        // Finish composing before modifying text
+        if (localeId in 2..8 && isComposing) {
+            ic.finishComposingText()
+        }
+
         val replaceLength = if (localeId == 1) {
             // English - replace current word
             manager.getEnglishReplacementLength(textBefore)
@@ -652,11 +698,19 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         val commitText = if (localeId == 1) "$word " else word
         ic.commitText(commitText, 1)
 
+        // End composing on suggestion commit (word boundary)
+        if (localeId in 2..8) {
+            handleMyanmarWordBoundary()
+        }
+
         // Track committed suggestion for skip-after-delete
         if (localeId == 1) {
             autoCorrector?.onSuggestionCommitted(word)
             lastSuggestionWord = word
         }
+
+        // Record for personalization
+        recordInputForPersonalization(ic, localeId)
 
         // Play feedback
         if (KeyboardConfig.isSoundOn()) {
@@ -669,6 +723,271 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         // Clear suggestions and trigger new update
         suggestionBar?.clearSuggestions()
         updateSuggestions()
+    }
+
+    // ============ Composing State for Word Boundary Detection ============
+
+    /**
+     * Start composing a new word. Captures the context (syllables before this word).
+     * Called when user starts typing Myanmar text after a word boundary (space/punctuation/start).
+     */
+    private fun startComposing(ic: InputConnection) {
+        if (isComposing) return
+
+        isComposing = true
+        composingText.clear()
+
+        // Capture context: get text before cursor and extract last 2+ syllables
+        val textBefore = ic.getTextBeforeCursor(TEXT_BEFORE_CURSOR_LENGTH, 0)?.toString() ?: ""
+        composingContextSyllables = if (textBefore.isNotBlank()) {
+            SyllableBreaker.breakSyllables(textBefore)
+                .filter { it.isNotBlank() && it != " " }
+                .takeLast(3)  // Keep last 3 syllables for context
+        } else {
+            emptyList()
+        }
+
+        android.util.Log.d(TAG, "startComposing: context=$composingContextSyllables")
+    }
+
+    /**
+     * Add text to the current composing buffer.
+     */
+    private fun appendToComposing(text: String) {
+        if (!isComposing) return
+        composingText.append(text)
+    }
+
+    /**
+     * End composing and record the composed word to User Dictionary if it contains unknown syllables.
+     * Called when a word boundary is detected (space, punctuation, suggestion commit).
+     *
+     * Reads the actual word from InputConnection instead of the manually-tracked buffer,
+     * because the buffer can get out of sync with IC due to:
+     * - Character reordering (E-vowel, medials) by input handlers
+     * - Delete operations during composing
+     * - Double-tap character replacements
+     */
+    private fun endComposing() {
+        if (!isComposing) return
+
+        isComposing = false
+        composingText.clear()
+
+        // Read actual word from IC (more reliable than composingText buffer)
+        val ic = currentInputConnection ?: return
+        val textBefore = ic.getTextBeforeCursor(TEXT_BEFORE_CURSOR_LENGTH, 0)?.toString() ?: return
+        if (textBefore.isBlank()) return
+
+        // Strip trailing whitespace and Myanmar punctuation (may or may not be present
+        // depending on whether the separator was committed before this call)
+        val stripped = textBefore.trimEnd().trimEnd(' ', '။', '၊', '\n', '\t', '\u200B').trimEnd()
+        if (stripped.isBlank()) return
+
+        // Extract the last Myanmar word (from last separator to end)
+        val separators = setOf(' ', '။', '၊', '\n', '\t', '\u200B')
+        val lastSepIndex = stripped.indexOfLast { it in separators }
+        val composedWord = if (lastSepIndex >= 0) {
+            stripped.substring(lastSepIndex + 1)
+        } else {
+            stripped
+        }
+
+        if (composedWord.isBlank()) return
+        if (!SyllableBreaker.containsMyanmarText(composedWord)) return
+        // Skip if the word is purely digits (English or Myanmar)
+        if (composedWord.all { it.isDigit() || it in '\u1040'..'\u1049' }) return
+
+        android.util.Log.d(TAG, "endComposing: word='$composedWord', context=$composingContextSyllables")
+
+        // Record to User Dictionary (SuggestionManager checks for unknown syllables)
+        suggestionManager?.recordComposedWord(composingContextSyllables, composedWord)
+    }
+
+    /**
+     * Reset composing state (e.g., on input field change).
+     */
+    private fun resetComposing() {
+        if (isComposing) {
+            currentInputConnection?.finishComposingText()
+        }
+        isComposing = false
+        composingText.clear()
+        composingContextSyllables = emptyList()
+    }
+
+    /**
+     * Update the composing region visual (underline) to cover the current Myanmar word.
+     * Uses setComposingRegion to mark committed text as composing for the visual style.
+     */
+    private fun updateComposingRegion(ic: InputConnection) {
+        if (!isComposing) return
+
+        val et = ic.getExtractedText(ExtractedTextRequest(), 0) ?: return
+        val text = et.text?.toString() ?: return
+        val cursor = et.selectionStart
+
+        if (cursor <= 0 || text.isEmpty()) {
+            return
+        }
+
+        // Find start of current word (scan backwards for Myanmar text)
+        var wordStart = cursor
+        val separators = setOf(' ', '။', '၊', '\n', '\t', '\u200B')
+        while (wordStart > 0 && text[wordStart - 1] !in separators) {
+            wordStart--
+        }
+
+        // Only set composing region if there's Myanmar text
+        val wordText = text.substring(wordStart, cursor)
+        if (wordText.isBlank() || !SyllableBreaker.containsMyanmarText(wordText)) {
+            return
+        }
+
+        ic.setComposingRegion(wordStart, cursor)
+    }
+
+    /**
+     * Handle composing state for Myanmar character input.
+     * Starts composing if not already, and appends the character.
+     */
+    private fun handleMyanmarComposing(ic: InputConnection, text: String) {
+        val localeId = getLocaleId()
+        // Only track composing for Myanmar languages (locale 2-7 and flick=8)
+        if (localeId !in 2..8) return
+
+        if (!isComposing) {
+            startComposing(ic)
+        }
+        appendToComposing(text)
+    }
+
+    /**
+     * Handle word boundary for Myanmar text.
+     * Finishes composing visual and records the composed word.
+     */
+    private fun handleMyanmarWordBoundary() {
+        if (isComposing) {
+            currentInputConnection?.finishComposingText()
+            endComposing()
+        }
+    }
+
+    /**
+     * Record the last English word to User Dictionary if it's unknown.
+     * Called when space or punctuation is entered in English mode.
+     */
+    private fun recordEnglishWordForUserDictionary(ic: InputConnection) {
+        val text = ic.getTextBeforeCursor(TEXT_BEFORE_CURSOR_LENGTH, 0)?.toString() ?: return
+        if (text.isBlank()) return
+
+        // Strip trailing punctuation and whitespace to find the last word
+        val cleaned = text.trimEnd { it.isWhitespace() || it in ".!?,;:)]}\"'" }
+        if (cleaned.isBlank()) return
+
+        // Extract words from cleaned text
+        val words = cleaned.split(Regex("\\s+")).filter { it.isNotEmpty() }
+        if (words.isEmpty()) return
+
+        val lastWord = words.last()
+        // Skip if not all letters (numbers, punctuation, etc.)
+        if (!lastWord.all { it.isLetter() }) return
+
+        // Context = preceding words
+        val contextWords = if (words.size > 1) {
+            words.dropLast(1).takeLast(3).map { it.lowercase() }
+        } else {
+            emptyList()
+        }
+
+        suggestionManager?.recordEnglishWord(contextWords, lastWord)
+    }
+
+    /**
+     * Record user input for personalization learning.
+     * Records only a small context window around the last completed token,
+     * preventing earlier tokens from being re-counted on every space press.
+     *
+     * We pass exactly [context1, context2, newToken] (max 3 tokens) so that:
+     * - The new token's unigram is incremented once
+     * - Bigram (context2 → newToken) is recorded
+     * - Trigram (context1|context2 → newToken) is recorded
+     */
+    private fun recordInputForPersonalization(ic: InputConnection, localeId: Int) {
+        if (!personalizationEnabled) return
+
+        val text = ic.getTextBeforeCursor(TEXT_BEFORE_CURSOR_LENGTH, 0)?.toString() ?: return
+        if (text.isBlank()) return
+
+        val isMyanmarr = localeId in 2..8
+
+        // Extract a small context window: last completed token + 2 preceding tokens
+        val contextWindow = extractContextWindow(text, isMyanmarr)
+        if (contextWindow.isBlank()) return
+
+        android.util.Log.d(TAG, "recordInputForPersonalization: '$contextWindow'")
+        suggestionManager?.recordUserInput(contextWindow, isMyanmarr)
+    }
+
+    /**
+     * Extract a context window of the last 3 tokens from text.
+     * Only includes tokens from the current sentence.
+     *
+     * If we're right at a sentence boundary (punctuation just committed,
+     * nothing after it), uses the sentence BEFORE the punctuation instead.
+     *
+     * For English: returns "word1 word2 word3" (last 3 words).
+     * For Myanmar: returns text containing last 3 syllables.
+     */
+    private fun extractContextWindow(text: String, isMyanmarr: Boolean): String {
+        if (text.isBlank()) return ""
+
+        val sentenceEnders = if (isMyanmarr) {
+            setOf('။', '၊', '.', '!', '?')
+        } else {
+            setOf('.', '!', '?', ';')
+        }
+
+        val trimmed = text.trimEnd()
+        var lastEnderIndex = -1
+        for (i in trimmed.indices.reversed()) {
+            if (trimmed[i] in sentenceEnders) {
+                lastEnderIndex = i
+                break
+            }
+        }
+
+        val phrase = if (lastEnderIndex >= 0) {
+            val afterEnder = trimmed.substring(lastEnderIndex + 1).trim()
+            if (afterEnder.isBlank()) {
+                // Right at sentence boundary (e.g., "...keyboard. ")
+                // Use the sentence that just ended (text before the punctuation)
+                val beforeEnder = trimmed.substring(0, lastEnderIndex).trim()
+                // Strip any earlier sentence enders
+                val prevEnderIndex = beforeEnder.indexOfLast { it in sentenceEnders }
+                if (prevEnderIndex >= 0) {
+                    beforeEnder.substring(prevEnderIndex + 1).trim()
+                } else {
+                    beforeEnder
+                }
+            } else {
+                afterEnder
+            }
+        } else {
+            trimmed
+        }
+
+        if (phrase.isBlank()) return ""
+
+        if (!isMyanmarr) {
+            val words = phrase.split(Regex("\\s+")).filter { it.isNotEmpty() }
+            return words.takeLast(3).joinToString(" ")
+        } else {
+            val syllables = SyllableBreaker.breakSyllables(phrase)
+                .filter { it.isNotBlank() && it != " " }
+            if (syllables.isEmpty()) return ""
+            return syllables.takeLast(3).joinToString("")
+        }
     }
 
     /**
@@ -763,6 +1082,9 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         // (skipped words will reappear in new sessions)
         autoCorrector?.resetSession()
         lastSuggestionWord = null
+
+        // Reset composing state for new input field
+        resetComposing()
 
         // Reset suggestion bar state for new input field
         suggestionBar?.resetState()
@@ -988,10 +1310,23 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                 handleSymByLocale()
             }
             Key.KEYCODE_MYANMAR_DELETE -> {
+                // Finish composing before delete
+                if (isComposing) {
+                    ic.finishComposingText()
+                }
                 if (KeyboardConfig.isPrimeBookOn()) {
                     currentInputHandler.handleDelete(ic, DeleteHandler.isEndOfText(ic))
                 } else {
                     DeleteHandler.deleteChar(ic)
+                }
+                // Update composing region after delete
+                if (isComposing) {
+                    val textBefore = ic.getTextBeforeCursor(1, 0)?.toString() ?: ""
+                    if (textBefore.isEmpty() || !SyllableBreaker.containsMyanmarText(textBefore)) {
+                        resetComposing()
+                    } else {
+                        updateComposingRegion(ic)
+                    }
                 }
                 updateSuggestions()
             }
@@ -1026,6 +1361,10 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
 
                 // Check for double-tap on Myanmar keyboard
                 if (localeId == 2 && KeyboardConfig.isDoubleTap()) {
+                    // Finish composing before double-tap IC manipulation
+                    if (isComposing) {
+                        ic.finishComposingText()
+                    }
                     val alternateCode = currentInputHandler.checkDoubleTap(primaryCode, keyCodes)
                     if (alternateCode != -1) {
                         // Double-tap detected - check actual text to determine action
@@ -1053,6 +1392,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                                 )
                                 ic.commitText(String(reorderedText), 1)
                                 currentInputHandler.prepareForDoubleTap()
+                                if (isComposing) updateComposingRegion(ic)
                                 if (shifted) unshiftByLocale()
                                 updateSuggestions()
                                 return
@@ -1099,12 +1439,18 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                             ic.commitText(alternateCode.toChar().toString(), 1)
                         }
 
+                        if (isComposing) updateComposingRegion(ic)
                         if (shifted) {
                             unshiftByLocale()
                         }
                         updateSuggestions()
                         return
                     }
+                }
+
+                // Finish composing before input handler processes (handler may reorder via IC)
+                if (localeId in 2..7 && isComposing) {
+                    ic.finishComposingText()
                 }
 
                 // Use input handler for language-specific processing
@@ -1117,22 +1463,36 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                 // Smart punctuation: if punctuation after space, move punctuation before space
                 if (localeId == 1 && isSmartPunctuation(code)) {
                     if (handleSmartPunctuation(ic, code)) {
-                        // Smart punctuation handled (includes syncAutoShiftState for sentence-ending)
-                        // Note: Don't unshift here - syncAutoShiftState handles shift state
+                        // Record the word before punctuation (it was missed because space was removed)
+                        recordEnglishWordForUserDictionary(ic)
+                        recordInputForPersonalization(ic, localeId)
                         updateSuggestions()
                         return
                     }
 
                     // For sentence-ending punctuation not after space, auto-add space
                     if (handleSentenceEndingPunctuation(ic, code)) {
-                        // Sentence-ending punctuation handled (includes syncAutoShiftState)
-                        // Note: Don't unshift here - syncAutoShiftState handles shift state
+                        // Record the word before punctuation
+                        recordEnglishWordForUserDictionary(ic)
+                        recordInputForPersonalization(ic, localeId)
                         updateSuggestions()
                         return
                     }
                 }
 
                 ic.commitText(cText, 1)
+
+                // Track composing state for Myanmar word boundary detection
+                if (localeId in 2..8) {
+                    if (cText == " " || cText in listOf("။", "၊")) {
+                        // Word boundary detected
+                        handleMyanmarWordBoundary()
+                    } else if (SyllableBreaker.containsMyanmarText(cText)) {
+                        // Myanmar character typed - track composing
+                        handleMyanmarComposing(ic, cText)
+                        updateComposingRegion(ic)
+                    }
+                }
 
                 // For English, fix standalone "i" after space
                 if (localeId == 1 && autoCapitalizeEnabled && cText == " ") {
@@ -1170,6 +1530,16 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                 // Sync shift state with auto-capitalization (after unshift)
                 syncAutoShiftState()
 
+                // Record unknown English words to User Dictionary on space
+                if (localeId == 1 && cText == " ") {
+                    recordEnglishWordForUserDictionary(ic)
+                }
+
+                // Record for personalization when space or sentence-ending punctuation is entered
+                if (cText == " " || (localeId in 2..8 && cText in listOf("။", "၊"))) {
+                    recordInputForPersonalization(ic, localeId)
+                }
+
                 updateSuggestions()
             }
         }
@@ -1184,10 +1554,26 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
             autoCorrector?.onDelete(textBefore, 1)
         }
 
+        // Finish composing before delete so IC operations work correctly
+        if (localeId in 2..8 && isComposing) {
+            ic.finishComposingText()
+        }
+
         if (currentInputHandler is BamarInputHandler && KeyboardConfig.isPrimeBookOn() && KeyboardConfig.isDoubleTap()) {
             (currentInputHandler as BamarInputHandler).handleSingleDelete(ic)
         } else {
             DeleteHandler.deleteChar(ic)
+        }
+
+        // Update composing region after delete (shrinks underline)
+        if (localeId in 2..8 && isComposing) {
+            // Check if we deleted all composing text
+            val textBefore = ic.getTextBeforeCursor(1, 0)?.toString() ?: ""
+            if (textBefore.isEmpty() || !SyllableBreaker.containsMyanmarText(textBefore)) {
+                resetComposing()
+            } else {
+                updateComposingRegion(ic)
+            }
         }
 
         // Sync shift state after delete (might be back at sentence start)
@@ -1224,6 +1610,14 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
 
         // Check if there's a space before cursor
         if (textBefore == " ") {
+            // For fullstop, check if digit before the space (decimal point like "3 .")
+            if (punctuation == '.') {
+                val textBefore2 = ic.getTextBeforeCursor(2, 0)?.toString() ?: ""
+                if (textBefore2.length >= 2 && isDigitChar(textBefore2[0])) {
+                    return false  // Don't smart-punctuate decimals
+                }
+            }
+
             // Delete the space
             ic.deleteSurroundingText(1, 0)
             // Insert punctuation + space
@@ -1248,12 +1642,44 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
     private fun handleSentenceEndingPunctuation(ic: InputConnection, punctuation: Char): Boolean {
         if (!isSentenceEndingPunctuation(punctuation)) return false
 
+        // For fullstop, check if digit before cursor (decimal point like "3.")
+        if (punctuation == '.') {
+            val textBefore = ic.getTextBeforeCursor(1, 0)?.toString() ?: ""
+            if (textBefore.isNotEmpty() && isDigitChar(textBefore[0])) {
+                return false  // Don't auto-space, this is a decimal point
+            }
+        }
+
         // Commit punctuation + space
         ic.commitText("$punctuation ", 1)
 
         // Sync shift state for auto-capitalize
         syncAutoShiftState()
         return true
+    }
+
+    // ============ In-Memory Data Access (for Settings UI) ============
+
+    /**
+     * Get learned words from in-memory personalization caches.
+     * Called by ImePreferencesActivity to show real-time data without disk I/O.
+     */
+    fun getLearnedWords(maxPerLanguage: Int): PersonalizationStorage.LearnedWords? {
+        return suggestionManager?.getLearnedWordsFromMemory(maxPerLanguage)
+    }
+
+    /**
+     * Get User Dictionary words from in-memory data.
+     */
+    fun getUserDictWords(maxResults: Int): List<SyllableTrie.WordEntry> {
+        return suggestionManager?.getUserDictionary()?.getAllWords(maxResults) ?: emptyList()
+    }
+
+    /**
+     * Check if a character is a digit (English 0-9 or Myanmar ၀-၉).
+     */
+    private fun isDigitChar(c: Char): Boolean {
+        return c.isDigit() || c in '\u1040'..'\u1049'
     }
 
     private fun handleSymByLocale() {
@@ -1434,6 +1860,11 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         // Get the text to commit
         val commitText = character.getCommitText()
 
+        // Finish composing before handler processes (handler may reorder via IC)
+        if (isComposing) {
+            ic.finishComposingText()
+        }
+
         // Use input handler for Myanmar-specific processing (E-vowel reordering, etc.)
         val processedText = if (commitText.length == 1) {
             currentInputHandler.handleInput(character.code, ic)
@@ -1447,6 +1878,13 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         }
 
         ic.commitText(processedText, 1)
+
+        // Track composing state for flick keyboard (Myanmar)
+        if (SyllableBreaker.containsMyanmarText(processedText)) {
+            handleMyanmarComposing(ic, processedText)
+            updateComposingRegion(ic)
+        }
+
         updateSuggestions()
     }
 
@@ -1470,10 +1908,23 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                 inputMethodManager?.switchToNextInputMethod(getToken(), true)
             }
             Key.KEYCODE_DELETE -> {
+                // Finish composing before delete
+                if (isComposing) {
+                    ic.finishComposingText()
+                }
                 if (KeyboardConfig.isPrimeBookOn()) {
                     currentInputHandler.handleDelete(ic, DeleteHandler.isEndOfText(ic))
                 } else {
                     DeleteHandler.deleteChar(ic)
+                }
+                // Update composing region after delete
+                if (isComposing) {
+                    val textBefore = ic.getTextBeforeCursor(1, 0)?.toString() ?: ""
+                    if (textBefore.isEmpty() || !SyllableBreaker.containsMyanmarText(textBefore)) {
+                        resetComposing()
+                    } else {
+                        updateComposingRegion(ic)
+                    }
                 }
                 updateSuggestions()
             }
@@ -1485,7 +1936,9 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                 showEmojiView()
             }
             32 -> { // Space
+                handleMyanmarWordBoundary()  // finishes composing text
                 ic.commitText(" ", 1)
+                recordInputForPersonalization(ic, getLocaleId())
                 updateSuggestions()
             }
         }
@@ -1529,6 +1982,9 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
             HapticManager.performHapticFeedback(this)
         }
 
+        // End composing (word boundary at punctuation)
+        handleMyanmarWordBoundary()
+
         // Insert ၊ (Little Section)
         ic.commitText("၊", 1)
         updateSuggestions()
@@ -1544,6 +2000,9 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         if (KeyboardConfig.isHapticEnabled()) {
             HapticManager.performHapticFeedback(this)
         }
+
+        // End composing (word boundary at punctuation)
+        handleMyanmarWordBoundary()
 
         // Double tap detected before single tap was executed,
         // so just insert ။ (Section) directly - no deletion needed
@@ -1562,9 +2021,21 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
             HapticManager.performHapticFeedback(this)
         }
 
+        // Finish composing before handler processes
+        if (isComposing) {
+            ic.finishComposingText()
+        }
+
         // Use input handler for proper Myanmar text processing (reordering, etc.)
         val processedText = currentInputHandler.handleInput(alternateCode, ic)
         ic.commitText(processedText, 1)
+
+        // Track composing state
+        if (SyllableBreaker.containsMyanmarText(processedText)) {
+            handleMyanmarComposing(ic, processedText)
+            updateComposingRegion(ic)
+        }
+
         updateSuggestions()
     }
 }

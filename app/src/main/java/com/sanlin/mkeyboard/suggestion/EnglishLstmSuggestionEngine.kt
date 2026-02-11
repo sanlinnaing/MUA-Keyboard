@@ -39,6 +39,13 @@ class EnglishLstmSuggestionEngine(private val context: Context) : SuggestionProv
         get() = isLoaded && lstmNative?.isInitialized == true
 
     /**
+     * Check if a word exists in the English LSTM vocabulary.
+     */
+    fun isKnownWord(word: String): Boolean {
+        return wordToIndex.containsKey(word.lowercase())
+    }
+
+    /**
      * Initialize the LSTM engine.
      * Should be called from a background thread.
      */

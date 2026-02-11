@@ -47,9 +47,6 @@
     <string name="haptic_strength_summ">Adjust vibration intensity</string>
     <string name="suggestion_method_title">Suggestion Method</string>
     <string name="suggestion_method_summ">Choose word or syllable predictions</string>
-    <string name="suggestion_order_title">Suggestion Order (Both mode)</string>
-    <string name="suggestion_order_summ">How to combine LSTM and Trie suggestions</string>
-
     <!-- English Typing -->
     <string name="english_typing_category">English Typing</string>
     <string name="english_suggestions_title">Word Suggestions</string>
@@ -58,5 +55,23 @@
     <string name="auto_capitalize_summ">Capitalize first letter after sentences and fix \"i\" to \"I\"</string>
     <string name="auto_correct_title">Auto-Correct</string>
     <string name="auto_correct_summ">Fix common contractions (dont → don\'t, Im → I\'m)</string>
+
+    <!-- Personalization -->
+    <string name="personalization_category">Personalization</string>
+    <string name="personalization_title">Personalized Suggestions</string>
+    <string name="personalization_summ">Learn from your typing to improve suggestions</string>
+    <string name="view_learned_words_title">View Learned Words</string>
+    <string name="view_learned_words_summ">See words learned from your typing</string>
+    <string name="view_learned_words_empty">No words learned yet. Start typing to build your personalized dictionary.</string>
+    <string name="view_user_dict_section">User Dictionary (%d words)</string>
+    <string name="view_learned_words_myanmar">Myanmar Patterns (%d syllables)</string>
+    <string name="view_learned_words_english">English Patterns (%d words)</string>
+    <string name="ngram_unigrams_header">[Words]</string>
+    <string name="ngram_bigrams_header">[Bigrams: %d pairs]</string>
+    <string name="ngram_trigrams_header">[Trigrams: %d triples]</string>
+    <string name="clear_personalization_title">Clear Typing History</string>
+    <string name="clear_personalization_summ">Remove learned words and patterns</string>
+    <string name="clear_personalization_confirm">This will remove all learned typing patterns. Your personalized suggestions will be reset.</string>
+    <string name="clear_personalization_done">Typing history cleared</string>
 
 </resources>

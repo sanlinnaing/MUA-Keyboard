@@ -29,15 +29,5 @@
         <item>both</item>
     </string-array>
 
-    <string-array name="suggestionOrderNameArray">
-        <item>LSTM first, Trie second</item>
-        <item>Trie first, LSTM second</item>
-        <item>Hybrid (validated LSTM first)</item>
-    </string-array>
-    <string-array name="suggestionOrderValueArray">
-        <item>lstm_first</item>
-        <item>trie_first</item>
-        <item>hybrid</item>
-    </string-array>
 
 </resources>

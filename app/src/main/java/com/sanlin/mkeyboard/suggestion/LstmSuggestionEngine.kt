@@ -203,6 +203,46 @@ class LstmSuggestionEngine(private val context: Context) {
     val isReady: Boolean
         get() = isLoaded && lstmNative?.isInitialized == true
 
+    /**
+     * Check if a syllable exists in the LSTM vocabulary.
+     * @return true if the syllable is known, false if unknown
+     */
+    fun isKnownSyllable(syllable: String): Boolean {
+        return syllableToIndex.containsKey(syllable)
+    }
+
+    /**
+     * Check if a word (list of syllables) contains any unknown syllables.
+     * @return true if at least one syllable is NOT in the vocabulary
+     */
+    fun hasUnknownSyllables(syllables: List<String>): Boolean {
+        return syllables.any { !syllableToIndex.containsKey(it) }
+    }
+
+    /**
+     * Predict the next syllable(s) given the current text context.
+     * Returns top N predicted syllables with their probabilities.
+     * Used by the LSTM-guided Trie pipeline.
+     */
+    fun predictNextSyllables(text: String, topN: Int = 3): List<Pair<String, Float>> {
+        if (!isReady || text.isEmpty()) return emptyList()
+
+        val lastSyllables = SyllableBreaker.lastSyllablesWithSpaces(text, SEQUENCE_LENGTH)
+        if (lastSyllables.isEmpty()) return emptyList()
+
+        val indices = lastSyllables.map { syll -> syllableToIndex[syll] ?: SPACE_INDEX }
+        val predictions = predictNextSyllable(indices)
+
+        return predictions
+            .filter { (index, prob) -> index != SPACE_INDEX && prob >= MIN_CONFIDENCE }
+            .take(topN)
+            .mapNotNull { (index, prob) ->
+                val syllable = indexToSyllable[index] ?: return@mapNotNull null
+                if (syllable.isBlank()) return@mapNotNull null
+                syllable to prob
+            }
+    }
+
     fun getSuggestions(text: String, topK: Int = 5): List<Suggestion> {
         if (!isReady) return emptyList()
         if (text.isEmpty()) return emptyList()

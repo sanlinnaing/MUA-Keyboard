@@ -29,15 +29,6 @@
         android:summary="@string/suggestion_method_summ"
         android:title="@string/suggestion_method_title" />
 
-    <ListPreference
-        android:defaultValue="lstm_first"
-        android:entries="@array/suggestionOrderNameArray"
-        android:entryValues="@array/suggestionOrderValueArray"
-        android:key="suggestion_order"
-        android:summary="@string/suggestion_order_summ"
-        android:title="@string/suggestion_order_title"
-        android:dependency="suggestion_method" />
-
     <CheckBoxPreference
         android:defaultValue="false"
         android:key="play_sound"
@@ -97,6 +88,22 @@
             android:defaultValue="true"
             android:title="@string/auto_correct_title"
             android:summary="@string/auto_correct_summ" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/personalization_category">
+        <CheckBoxPreference
+            android:key="personalization_enabled"
+            android:defaultValue="true"
+            android:title="@string/personalization_title"
+            android:summary="@string/personalization_summ" />
+        <Preference
+            android:key="view_learned_words"
+            android:title="@string/view_learned_words_title"
+            android:summary="@string/view_learned_words_summ" />
+        <Preference
+            android:key="clear_personalization"
+            android:title="@string/clear_personalization_title"
+            android:summary="@string/clear_personalization_summ" />
     </PreferenceCategory>
 
     <Preference android:title="@string/faq" >

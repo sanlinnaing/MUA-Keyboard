@@ -89,6 +89,17 @@ class SuggestionEngine(private val context: Context) {
     }
 
     /**
+     * Get suggestions using explicit syllable arrays.
+     * Used by the LSTM-guided pipeline where syllables are pre-constructed.
+     */
+    fun getSuggestionsBySyllables(syllables: List<String>, topK: Int = 5): List<Suggestion> {
+        if (!isReady || syllables.isEmpty()) return emptyList()
+        val filtered = syllables.filter { it.isNotBlank() }
+        if (filtered.isEmpty()) return emptyList()
+        return trieNative.suggest(filtered.toTypedArray(), topK)
+    }
+
+    /**
      * Calculate the number of characters to delete when replacing with a suggestion.
      * This accounts for the syllables that were used for matching.
      * Only considers text after the last punctuation.

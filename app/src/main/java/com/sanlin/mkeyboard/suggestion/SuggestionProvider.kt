@@ -37,11 +37,3 @@ enum class SuggestionMethod {
     BOTH       // Combined - words first, syllables as supplement
 }
 
-/**
- * Suggestion order for combined (BOTH) mode.
- */
-enum class SuggestionOrder {
-    LSTM_FIRST,  // LSTM suggestions first, then Trie
-    TRIE_FIRST,  // Trie suggestions first, then LSTM
-    HYBRID       // LSTM suggestions validated by Trie first, then remaining
-}

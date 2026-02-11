@@ -3,7 +3,10 @@ package com.sanlin.mkeyboard.view
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
+import android.text.SpannableString
+import android.text.Spannable
 import android.text.TextUtils
+import android.text.style.ForegroundColorSpan
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.Gravity
@@ -215,7 +218,7 @@ class SuggestionBarView @JvmOverloads constructor(
                 chipContainer.addView(createFlexSpacer())
             }
 
-            val chip = createChip(suggestion.word, isLight)
+            val chip = createChip(suggestion, isLight)
             chipContainer.addView(chip)
 
             chipContainer.addView(createFlexSpacer())
@@ -352,9 +355,29 @@ class SuggestionBarView @JvmOverloads constructor(
         onSuggestionClickListener = listener
     }
 
-    private fun createChip(word: String, isLight: Boolean): TextView {
+    private fun createChip(suggestion: Suggestion, isLight: Boolean): TextView {
+        val word = suggestion.word
         return TextView(context).apply {
-            text = word
+            // Add colored dot indicator for boosted/user-dict suggestions
+            if (suggestion.fromUserDict || suggestion.boosted) {
+                val indicator = if (suggestion.fromUserDict) " \u25C6" else " \u25CF"  // ◆ or ●
+                val spannable = SpannableString("$word$indicator")
+                val indicatorColor = if (suggestion.fromUserDict) {
+                    Color.parseColor("#4CAF50")  // Green for user dict
+                } else {
+                    Color.parseColor("#42A5F5")  // Blue for personalized
+                }
+                spannable.setSpan(
+                    ForegroundColorSpan(indicatorColor),
+                    word.length,
+                    spannable.length,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                text = spannable
+            } else {
+                text = word
+            }
+
             setTextSize(TypedValue.COMPLEX_UNIT_SP, chipTextSize)
             setTypeface(typeface, Typeface.NORMAL)
             gravity = Gravity.CENTER
