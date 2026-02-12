@@ -57,6 +57,14 @@
         android:summary="@string/proximity_correction_summ"
         android:title="@string/proximity_correction_title" />
 
+    <ListPreference
+        android:defaultValue="auto"
+        android:entries="@array/navBarSpaceNameArray"
+        android:entryValues="@array/navBarSpaceValueArray"
+        android:key="nav_bar_space"
+        android:summary="@string/nav_bar_space_summ"
+        android:title="@string/nav_bar_space_title" />
+
     <EditTextPreference
         android:key="test_keyboard_text"
         android:summary="@string/test_keyboard_summ"

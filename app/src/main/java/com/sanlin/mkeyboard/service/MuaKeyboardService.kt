@@ -85,6 +85,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
     private var autoCapitalizeEnabled = true
     private var autoCorrectEnabled = true
     private var personalizationEnabled = true
+    private var navBarSpaceMode = "auto"  // "auto", "on", "off"
 
     // Composing state for word boundary detection (Myanmar User Dictionary)
     private var isComposing = false
@@ -141,6 +142,11 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                 suggestionManager?.clearPersonalizationHistory()
                 suggestionManager?.clearUserDictionary()
                 resetComposing()
+            }
+            "nav_bar_space" -> {
+                navBarSpaceMode = prefs.getString("nav_bar_space", "auto") ?: "auto"
+                // Re-create input view to apply new padding
+                setInputView(onCreateInputView())
             }
         }
     }
@@ -221,6 +227,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         autoCapitalizeEnabled = sharedPref.getBoolean("auto_capitalize", true)
         autoCorrectEnabled = sharedPref.getBoolean("auto_correct", true)
         personalizationEnabled = sharedPref.getBoolean("personalization_enabled", true)
+        navBarSpaceMode = sharedPref.getString("nav_bar_space", "auto") ?: "auto"
 
         backgroundExecutor.execute {
             suggestionManager = SuggestionManager(this@MuaKeyboardService)
@@ -453,34 +460,37 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         keyboardContainer = container
         isEmojiMode = false
 
-        // Use WindowInsets API to handle navigation bar across all devices
-        // This works for Pixel, Samsung, OnePlus, etc. regardless of navigation mode
-        ViewCompat.setOnApplyWindowInsetsListener(container) { view, windowInsets ->
-            // Get system bar insets (includes navigation bar)
-            val systemBarsInsets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
-            // Get IME insets for proper keyboard positioning
-            val imeInsets = windowInsets.getInsets(WindowInsetsCompat.Type.ime())
-
-            // Use the larger of system bars or IME bottom inset
-            // This ensures keyboard doesn't overlap with navigation bar
-            val bottomInset = maxOf(systemBarsInsets.bottom, imeInsets.bottom)
-
-            // Apply padding to avoid navigation bar overlap
-            view.setPadding(
-                systemBarsInsets.left,
-                0,
-                systemBarsInsets.right,
-                bottomInset
-            )
-
-            // Return the insets so child views can also handle them if needed
-            windowInsets
+        // Apply navigation bar bottom padding based on user preference
+        when (navBarSpaceMode) {
+            "off" -> {
+                // User explicitly disabled - no bottom padding
+                container.setPadding(0, 0, 0, 0)
+            }
+            "on" -> {
+                // User explicitly enabled - always add nav bar space
+                val navBarHeight = getNavigationBarHeightFallback()
+                val minHeight = (48 * resources.displayMetrics.density).toInt()
+                container.setPadding(0, 0, 0, maxOf(navBarHeight, minHeight))
+            }
+            else -> {
+                // Auto mode - use WindowInsets API to detect navigation bar
+                ViewCompat.setOnApplyWindowInsetsListener(container) { view, windowInsets ->
+                    val systemBarsInsets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+                    val imeInsets = windowInsets.getInsets(WindowInsetsCompat.Type.ime())
+                    val bottomInset = maxOf(systemBarsInsets.bottom, imeInsets.bottom)
+                    view.setPadding(
+                        systemBarsInsets.left,
+                        0,
+                        systemBarsInsets.right,
+                        bottomInset
+                    )
+                    windowInsets
+                }
+                // Fallback for devices where WindowInsets listener might not fire immediately
+                val fallbackNavBarHeight = getNavigationBarHeightFallback()
+                container.setPadding(0, 0, 0, fallbackNavBarHeight)
+            }
         }
-
-        // Fallback: Apply initial padding using legacy method for devices where
-        // WindowInsets listener might not fire immediately
-        val fallbackNavBarHeight = getNavigationBarHeightFallback()
-        container.setPadding(0, 0, 0, fallbackNavBarHeight)
 
         return container
     }

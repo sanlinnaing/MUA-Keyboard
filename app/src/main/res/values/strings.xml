@@ -56,6 +56,10 @@
     <string name="auto_correct_title">Auto-Correct</string>
     <string name="auto_correct_summ">Fix common contractions (dont → don\'t, Im → I\'m)</string>
 
+    <!-- Navigation Bar -->
+    <string name="nav_bar_space_title">Navigation Bar Space</string>
+    <string name="nav_bar_space_summ">Add space below keyboard for navigation bar</string>
+
     <!-- Personalization -->
     <string name="personalization_category">Personalization</string>
     <string name="personalization_title">Personalized Suggestions</string>
