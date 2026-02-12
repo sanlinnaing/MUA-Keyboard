@@ -90,6 +90,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
     private var isComposing = false
     private var composingText = StringBuilder()
     private var composingContextSyllables = listOf<String>()  // 2+ syllables before composing start
+    private var composingStartPosition = -1  // Cursor position when composing started
 
     // Clipboard
     private var clipboardManager: ClipboardManager? = null
@@ -488,6 +489,8 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
      * Show the emoji view and hide the keyboard.
      */
     private fun showEmojiView() {
+        // Finish composing before switching to emoji
+        if (isComposing) handleMyanmarWordBoundary()
         // Track if we came from flick mode
         wasFlickModeBeforeSymbol = isFlickMode
         isEmojiMode = true
@@ -652,13 +655,16 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                 return@Runnable
             }
 
+            // Limit to composing portion to avoid searching based on previous suggestion
+            val myanmarTextBefore = getComposingTextBefore(ic, textBefore)
+
             // Clear suggestions if no Myanmar text
-            if (textBefore.isEmpty() || !SyllableBreaker.containsMyanmarText(textBefore)) {
+            if (myanmarTextBefore.isEmpty() || !SyllableBreaker.containsMyanmarText(myanmarTextBefore)) {
                 suggestionBar?.clearSuggestions()
                 return@Runnable
             }
 
-            val suggestions = manager.getSuggestions(textBefore)
+            val suggestions = manager.getSuggestions(myanmarTextBefore)
             suggestionBar?.setSuggestions(suggestions)
         }
 
@@ -686,8 +692,9 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
             // English - replace current word
             manager.getEnglishReplacementLength(textBefore)
         } else {
-            // Myanmar - use existing logic
-            manager.getReplacementLength(textBefore, word)
+            // Myanmar - limit to composing portion to avoid replacing previous suggestion
+            val composingText = getComposingTextBefore(ic, textBefore)
+            manager.getReplacementLength(composingText, word)
         }
 
         if (replaceLength > 0) {
@@ -701,6 +708,10 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         // End composing on suggestion commit (word boundary)
         if (localeId in 2..8) {
             handleMyanmarWordBoundary()
+            // Record cursor position as boundary so next composing session
+            // doesn't extend underline past the committed suggestion
+            val et = ic.getExtractedText(ExtractedTextRequest(), 0)
+            composingStartPosition = et?.selectionStart ?: -1
         }
 
         // Track committed suggestion for skip-after-delete
@@ -731,11 +742,19 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
      * Start composing a new word. Captures the context (syllables before this word).
      * Called when user starts typing Myanmar text after a word boundary (space/punctuation/start).
      */
-    private fun startComposing(ic: InputConnection) {
+    private fun startComposing(ic: InputConnection, committedTextLength: Int = 0) {
         if (isComposing) return
 
         isComposing = true
         composingText.clear()
+
+        // Record composing start position so underline only covers what user typed,
+        // not existing text before cursor (important for mid-text insertion)
+        val et = ic.getExtractedText(ExtractedTextRequest(), 0)
+        val cursor = et?.selectionStart ?: -1
+        if (cursor >= committedTextLength) {
+            composingStartPosition = cursor - committedTextLength
+        }
 
         // Capture context: get text before cursor and extract last 2+ syllables
         val textBefore = ic.getTextBeforeCursor(TEXT_BEFORE_CURSOR_LENGTH, 0)?.toString() ?: ""
@@ -814,6 +833,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         isComposing = false
         composingText.clear()
         composingContextSyllables = emptyList()
+        composingStartPosition = -1
     }
 
     /**
@@ -831,10 +851,12 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
             return
         }
 
-        // Find start of current word (scan backwards for Myanmar text)
+        // Find start of current word (scan backwards while Myanmar letter)
+        // Stops at any non-Myanmar character: space, emoji, digits, English, etc.
+        // Also respects composing start position (e.g., after suggestion commit)
+        val minStart = if (composingStartPosition in 0..cursor) composingStartPosition else 0
         var wordStart = cursor
-        val separators = setOf(' ', '။', '၊', '\n', '\t', '\u200B')
-        while (wordStart > 0 && text[wordStart - 1] !in separators) {
+        while (wordStart > minStart && isMyanmarLetter(text[wordStart - 1])) {
             wordStart--
         }
 
@@ -857,7 +879,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         if (localeId !in 2..8) return
 
         if (!isComposing) {
-            startComposing(ic)
+            startComposing(ic, text.length)
         }
         appendToComposing(text)
     }
@@ -871,6 +893,33 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
             currentInputConnection?.finishComposingText()
             endComposing()
         }
+        composingStartPosition = -1
+    }
+
+    /**
+     * Get the text that the user is currently composing (typing).
+     * When composingStartPosition is set (after a suggestion commit without space),
+     * returns only the text from that position to cursor.
+     * Otherwise returns the full textBefore.
+     */
+    private fun getComposingTextBefore(ic: InputConnection, fullTextBefore: String): String {
+        if (composingStartPosition < 0) return fullTextBefore
+        val et = ic.getExtractedText(ExtractedTextRequest(), 0) ?: return fullTextBefore
+        val cursor = et.selectionStart
+        val fullText = et.text?.toString() ?: return fullTextBefore
+        if (composingStartPosition in 0..cursor && cursor <= fullText.length) {
+            val portion = fullText.substring(composingStartPosition, cursor)
+            // Validate: if the portion contains a space or punctuation, the user must have
+            // moved the cursor to a different location - composingStartPosition is stale
+            if (portion.contains(' ') || portion.contains('။') || portion.contains('၊')) {
+                composingStartPosition = -1
+                return fullTextBefore
+            }
+            return portion
+        }
+        // Cursor moved before composingStartPosition - stale
+        composingStartPosition = -1
+        return fullTextBefore
     }
 
     /**
@@ -1173,6 +1222,9 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
     override fun onCurrentInputMethodSubtypeChanged(newSubtype: InputMethodSubtype) {
         super.onCurrentInputMethodSubtypeChanged(newSubtype)
 
+        // Finish composing before switching language
+        if (isComposing) handleMyanmarWordBoundary()
+
         val subtypeId = newSubtype.extraValue.toIntOrNull() ?: 1
 
         // Track the main subtype (this is the user-selected language subtype)
@@ -1340,6 +1392,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                 hideEmojiView()
             }
             Key.KEYCODE_DONE -> {
+                if (isComposing) handleMyanmarWordBoundary()
                 ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
                 ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
             }
@@ -1361,13 +1414,13 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
 
                 // Check for double-tap on Myanmar keyboard
                 if (localeId == 2 && KeyboardConfig.isDoubleTap()) {
-                    // Finish composing before double-tap IC manipulation
-                    if (isComposing) {
-                        ic.finishComposingText()
-                    }
                     val alternateCode = currentInputHandler.checkDoubleTap(primaryCode, keyCodes)
                     if (alternateCode != -1) {
-                        // Double-tap detected - check actual text to determine action
+                        // Double-tap detected - finish composing before IC manipulation
+                        if (isComposing) {
+                            ic.finishComposingText()
+                        }
+                        // Check actual text to determine action
                         // Check 3 chars to detect [consonant][E_VOWEL][first_tap_char] pattern
                         val textBefore3 = ic.getTextBeforeCursor(3, 0)
                         val textBefore = ic.getTextBeforeCursor(2, 0)
@@ -1449,7 +1502,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                 }
 
                 // Finish composing before input handler processes (handler may reorder via IC)
-                if (localeId in 2..7 && isComposing) {
+                if (localeId in 2..8 && isComposing) {
                     ic.finishComposingText()
                 }
 
@@ -1484,13 +1537,25 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
 
                 // Track composing state for Myanmar word boundary detection
                 if (localeId in 2..8) {
+                    // Check if this is a first-tap digit that may become a letter via double-tap
+                    val isDoubleTapPending = localeId == 2 && KeyboardConfig.isDoubleTap() &&
+                            containsMyanmarDigit(cText) &&
+                            keyCodes != null && keyCodes.size > 1 && keyCodes[1] != 0
+
                     if (cText == " " || cText in listOf("။", "၊")) {
                         // Word boundary detected
                         handleMyanmarWordBoundary()
-                    } else if (SyllableBreaker.containsMyanmarText(cText)) {
-                        // Myanmar character typed - track composing
+                    } else if (SyllableBreaker.containsMyanmarText(cText) && !containsMyanmarDigit(cText)) {
+                        // Myanmar letter typed - track composing
                         handleMyanmarComposing(ic, cText)
                         updateComposingRegion(ic)
+                    } else if (isDoubleTapPending) {
+                        // First tap of double-tap digit - keep composing active
+                        // The digit may become a Myanmar letter on second tap
+                        updateComposingRegion(ic)
+                    } else if (isComposing) {
+                        // Number or symbol typed - end composing (not part of a word)
+                        handleMyanmarWordBoundary()
                     }
                 }
 
@@ -1682,7 +1747,26 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         return c.isDigit() || c in '\u1040'..'\u1049'
     }
 
+    /**
+     * Check if text contains Myanmar digits (၀-၉, U+1040-U+1049).
+     * Myanmar digits are not part of words and should end composing.
+     */
+    private fun containsMyanmarDigit(text: String): Boolean {
+        return text.any { it in '\u1040'..'\u1049' }
+    }
+
+    /**
+     * Check if a character is a Myanmar letter (consonant, vowel, medial, sign).
+     * Excludes digits (U+1040-1049) and punctuation (U+104A-104F).
+     */
+    private fun isMyanmarLetter(c: Char): Boolean {
+        val code = c.code
+        return code in 0x1000..0x103F || code in 0x1050..0x109F
+    }
+
     private fun handleSymByLocale() {
+        // Finish composing before switching to/from symbol mode
+        if (isComposing) handleMyanmarWordBoundary()
         if (!symbol) {
             // Entering symbol mode - use lastMainSubtypeId to get correct symbol keyboard
             if (isFlickMode || lastMainSubtypeId == FLICK_KEYBOARD_ID) {
@@ -1929,6 +2013,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                 updateSuggestions()
             }
             Key.KEYCODE_DONE -> {
+                if (isComposing) handleMyanmarWordBoundary()
                 ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
                 ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
             }
