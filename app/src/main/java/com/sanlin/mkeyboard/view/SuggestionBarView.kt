@@ -38,6 +38,7 @@ class SuggestionBarView @JvmOverloads constructor(
     private var onPasteClickListener: (() -> Unit)? = null
     private var clipboardText: String? = null
     private var isInitialState = true  // True until user types something
+    var isPasted = false  // True after user pastes from clipboard chip
 
     // Dimensions
     private val barHeight: Int
@@ -235,6 +236,11 @@ class SuggestionBarView @JvmOverloads constructor(
     fun setClipboardText(text: String?) {
         clipboardText = text?.trim()?.takeIf { it.isNotEmpty() }
         updateClipboardButton()
+        // Refresh content preview if in initial state and not yet pasted
+        if (isInitialState && !isPasted) {
+            chipContainer.removeAllViews()
+            showInitialClipboardChip()
+        }
     }
 
     /**
@@ -242,16 +248,17 @@ class SuggestionBarView @JvmOverloads constructor(
      */
     private fun updateClipboardButton() {
         val hasClipboard = !clipboardText.isNullOrEmpty()
-        // Show clipboard button when not in initial state and has clipboard content
-        clipboardButton.visibility = if (hasClipboard && !isInitialState) View.VISIBLE else View.GONE
+        // Show clipboard icon when: has content AND (already pasted OR user started typing)
+        clipboardButton.visibility = if (hasClipboard && (isPasted || !isInitialState)) View.VISIBLE else View.GONE
     }
 
     /**
-     * Show centered paste chip with clipboard preview (initial state only).
+     * Show centered paste chip with clipboard preview (initial state, before paste).
      */
     private fun showInitialClipboardChip() {
         val text = clipboardText
         if (text.isNullOrEmpty()) return
+        if (isPasted) return  // Already pasted, just show icon
 
         val isLight = isLightTheme(KeyboardConfig.getCurrentTheme())
 
@@ -264,6 +271,15 @@ class SuggestionBarView @JvmOverloads constructor(
 
         scrollView.isFillViewport = true
         chipContainer.gravity = Gravity.CENTER_VERTICAL
+    }
+
+    /**
+     * Mark paste as done. Hides the content preview chip and shows just the icon.
+     */
+    fun markPasted() {
+        isPasted = true
+        chipContainer.removeAllViews()
+        updateClipboardButton()
     }
 
     /**
@@ -343,6 +359,7 @@ class SuggestionBarView @JvmOverloads constructor(
      */
     fun resetState() {
         isInitialState = true
+        // isPasted is NOT reset here — it persists until clipboard content changes
         chipContainer.removeAllViews()
         updateClipboardButton()
         showInitialClipboardChip()

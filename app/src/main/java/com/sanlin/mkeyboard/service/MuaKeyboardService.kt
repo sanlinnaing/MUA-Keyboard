@@ -95,8 +95,16 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
     private var composingStartPosition = -1  // Cursor position when composing started
 
     // Clipboard
+    private var clipboardPasted = false  // Persists across view recreation
+    private var lastClipboardText: String? = null  // Track content for change detection
     private var clipboardManager: ClipboardManager? = null
     private val clipboardListener = ClipboardManager.OnPrimaryClipChangedListener {
+        // New content copied - reset paste state
+        val newText = getClipboardContent()
+        if (newText != lastClipboardText) {
+            clipboardPasted = false
+            lastClipboardText = newText
+        }
         updateClipboardText()
     }
 
@@ -1056,17 +1064,23 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         }
     }
 
-    /**
-     * Update the clipboard text shown in suggestion bar when empty.
-     */
-    private fun updateClipboardText() {
+    private fun getClipboardContent(): String? {
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
         val clip = clipboard?.primaryClip
-        val text = if (clip != null && clip.itemCount > 0) {
+        return if (clip != null && clip.itemCount > 0) {
             clip.getItemAt(0)?.text?.toString()
         } else {
             null
         }
+    }
+
+    /**
+     * Update the clipboard text shown in suggestion bar when empty.
+     */
+    private fun updateClipboardText() {
+        val text = getClipboardContent()
+        lastClipboardText = text
+        suggestionBar?.isPasted = clipboardPasted
         suggestionBar?.setClipboardText(text)
     }
 
@@ -1075,16 +1089,14 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
      */
     private fun pasteFromClipboard() {
         val ic = currentInputConnection ?: return
-        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-        val clip = clipboard?.primaryClip
-        val text = if (clip != null && clip.itemCount > 0) {
-            clip.getItemAt(0)?.text?.toString()
-        } else {
-            null
-        }
+        val text = getClipboardContent()
 
         if (!text.isNullOrEmpty()) {
             ic.commitText(text, 1)
+
+            // Mark paste done - persists in service across view recreations
+            clipboardPasted = true
+            suggestionBar?.markPasted()
 
             // Play feedback
             if (KeyboardConfig.isSoundOn()) {
