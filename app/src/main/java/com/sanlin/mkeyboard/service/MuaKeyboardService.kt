@@ -86,6 +86,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
     private var autoCorrectEnabled = true
     private var personalizationEnabled = true
     private var navBarSpaceMode = "auto"  // "auto", "on", "off"
+    private var suppressSuggestions = false  // True for password, email, URI fields
 
     // Composing state for word boundary detection (Myanmar User Dictionary)
     private var isComposing = false
@@ -628,6 +629,12 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                 return@Runnable
             }
 
+            // Suppress suggestions for password, email, URI fields
+            if (suppressSuggestions) {
+                suggestionBar?.clearSuggestions()
+                return@Runnable
+            }
+
             val localeId = getLocaleId()
             val textBefore = ic.getTextBeforeCursor(TEXT_BEFORE_CURSOR_LENGTH, 0)?.toString() ?: ""
 
@@ -1137,6 +1144,9 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
             applySubtype(savedSubtypeId)
         }
 
+        // Suppress suggestions for sensitive/non-text input fields
+        suppressSuggestions = shouldSuppressSuggestions(info)
+
         // Reset autocorrector session for new input field
         // (skipped words will reappear in new sessions)
         autoCorrector?.resetSession()
@@ -1198,6 +1208,39 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         if (variation in skipVariations) return false
 
         return true
+    }
+
+    /**
+     * Check if suggestions should be suppressed for this input field.
+     * Returns true for password, email, URI, and non-text fields.
+     */
+    private fun shouldSuppressSuggestions(info: EditorInfo?): Boolean {
+        if (info == null) return false
+
+        val inputType = info.inputType and android.text.InputType.TYPE_MASK_CLASS
+        val variation = info.inputType and android.text.InputType.TYPE_MASK_VARIATION
+        val flags = info.inputType and android.text.InputType.TYPE_MASK_FLAGS
+
+        // Suppress for non-text input types (number, phone, datetime)
+        if (inputType != android.text.InputType.TYPE_CLASS_TEXT) return true
+
+        // Suppress if app explicitly requests no suggestions
+        if (flags and android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS != 0) return true
+
+        // Suppress for search fields (e.g., Google Search)
+        val imeAction = info.imeOptions and EditorInfo.IME_MASK_ACTION
+        if (imeAction == EditorInfo.IME_ACTION_SEARCH) return true
+
+        // Suppress for sensitive or structured text fields
+        return variation in listOf(
+            android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD,
+            android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD,
+            android.text.InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD,
+            android.text.InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS,
+            android.text.InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS,
+            android.text.InputType.TYPE_TEXT_VARIATION_URI,
+            android.text.InputType.TYPE_TEXT_VARIATION_FILTER
+        )
     }
 
     /**
@@ -1462,7 +1505,23 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                             }
                         }
 
-                        if (textBefore != null && textBefore.length >= 2) {
+                        // Check if the first tap was the E-vowel key itself
+                        // (primaryCode is the same key for both taps in a double-tap)
+                        val firstTapWasEVowel = primaryCode == MyanmarUnicode.E_VOWEL
+
+                        if (firstTapWasEVowel) {
+                            // First tap was E-vowel key: [ZWSP][ေ] in IC
+                            // Delete the first tap's output, then process alternate
+                            // through handleInput for proper E-vowel reordering
+                            val charsToDelete = if (textBefore != null && textBefore.length >= 2 &&
+                                textBefore[0].code == MyanmarUnicode.ZWSP) 2 else 1
+                            ic.deleteSurroundingText(charsToDelete, 0)
+                            // handleInput will check if there's a pre-existing ေ
+                            // before cursor and reorder if needed (ဗေ), or just
+                            // output the character alone (ဗ) if no ေ exists
+                            cText = currentInputHandler.handleInput(alternateCode, ic)
+                            ic.commitText(cText, 1)
+                        } else if (textBefore != null && textBefore.length >= 2) {
                             val firstChar = textBefore[0].code
                             val secondChar = textBefore[1].code
 
@@ -1482,7 +1541,6 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                             } else if (firstChar == MyanmarUnicode.E_VOWEL ||
                                        firstChar == MyanmarUnicode.ZWSP) {
                                 // E-vowel or ZWSP is at position 0 - no reordering happened yet
-                                // Pattern is [ZWSP?][E_VOWEL][consonant] or similar
                                 // Delete the consonant
                                 ic.deleteSurroundingText(1, 0)
                                 // Now process the alternate through handleInput for proper reordering
@@ -1502,7 +1560,14 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                             ic.commitText(alternateCode.toChar().toString(), 1)
                         }
 
-                        if (isComposing) updateComposingRegion(ic)
+                        // After double-tap produces a Myanmar letter, ensure composing is active
+                        val altText = alternateCode.toChar().toString()
+                        if (SyllableBreaker.containsMyanmarText(altText) && !containsMyanmarDigit(altText)) {
+                            handleMyanmarComposing(ic, altText)
+                            updateComposingRegion(ic)
+                        } else if (isComposing) {
+                            updateComposingRegion(ic)
+                        }
                         if (shifted) {
                             unshiftByLocale()
                         }
@@ -1524,7 +1589,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                 }
 
                 // Smart punctuation: if punctuation after space, move punctuation before space
-                if (localeId == 1 && isSmartPunctuation(code)) {
+                if (localeId == 1 && !suppressSuggestions && isSmartPunctuation(code)) {
                     if (handleSmartPunctuation(ic, code)) {
                         // Record the word before punctuation (it was missed because space was removed)
                         recordEnglishWordForUserDictionary(ic)
@@ -1570,13 +1635,13 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                 }
 
                 // For English, fix standalone "i" after space
-                if (localeId == 1 && autoCapitalizeEnabled && cText == " ") {
+                if (localeId == 1 && !suppressSuggestions && autoCapitalizeEnabled && cText == " ") {
                     autoCapitalizer?.fixStandaloneI(ic, ' ')
                 }
 
                 // For English, autocorrect contractions and spelling after space
                 var autocorrectionApplied = false
-                if (localeId == 1 && autoCorrectEnabled && cText == " ") {
+                if (localeId == 1 && !suppressSuggestions && autoCorrectEnabled && cText == " ") {
                     // Try contraction correction first
                     val contractionCorrected = autoCorrector?.correctContraction(ic) ?: false
 
@@ -1883,6 +1948,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         val localeId = getLocaleId()
         if (localeId != 1) return  // Only for English
         if (!autoCapitalizeEnabled) return
+        if (suppressSuggestions) return  // No auto-shift in password/email/URI fields
         if (capsLock) return  // Don't interfere with caps lock
 
         val ic = currentInputConnection ?: return
@@ -1896,11 +1962,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
     }
 
     private fun getLocaleId(): Int {
-        return try {
-            inputMethodManager?.currentInputMethodSubtype?.extraValue?.toInt() ?: 1
-        } catch (ex: NumberFormatException) {
-            1
-        }
+        return lastMainSubtypeId
     }
 
     override fun onKeyLongPress(keyCode: Int, event: KeyEvent?): Boolean {
