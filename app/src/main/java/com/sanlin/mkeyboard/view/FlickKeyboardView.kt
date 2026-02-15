@@ -66,6 +66,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     private var touchDownY: Float = 0f
     private var currentFlickKey: FlickKey? = null
     private var currentSpecialKey: Key? = null
+    private var currentShiftedKey: Key? = null
     private var currentDirection: FlickDirection = FlickDirection.CENTER
 
     // Flick threshold (40dp converted to pixels)
@@ -108,6 +109,10 @@ class FlickKeyboardView @JvmOverloads constructor(
     private var showPunctuationPopup: Boolean = false
     private var punctuationPopupKey: Key? = null
 
+    // Flick preview popup tracking
+    private var showFlickPreview: Boolean = false
+    private var flickPreviewLabel: String = ""
+
     // Long press and repeat timing
     private val longPressTimeout = 400L
     private val repeatInterval = 50L
@@ -121,7 +126,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         // Calculate sizes (reduced for smaller keys)
         centerTextSize = 20 * density
         hintTextSize = 11 * density
-        flickThreshold = 40 * density
+        flickThreshold = 24 * density
         cornerRadius = 6 * density
 
         // Load colors from theme attributes
@@ -237,9 +242,15 @@ class FlickKeyboardView @JvmOverloads constructor(
         // Update theme colors
         updateColorsForTheme()
 
-        // Draw main flick keys (center 3 columns)
-        for (key in keyboard.flickKeys) {
-            drawFlickKey(canvas, key)
+        // Draw main area: either shifted keys or normal flick keys
+        if (keyboard.isShifted) {
+            for (key in keyboard.shiftedKeys) {
+                drawShiftedKey(canvas, key)
+            }
+        } else {
+            for (key in keyboard.flickKeys) {
+                drawFlickKey(canvas, key)
+            }
         }
 
         // Draw side keys (normal keys, left and right columns)
@@ -250,6 +261,11 @@ class FlickKeyboardView @JvmOverloads constructor(
         // Draw punctuation popup if active
         if (showPunctuationPopup && punctuationPopupKey != null) {
             drawPunctuationPopup(canvas, punctuationPopupKey!!)
+        }
+
+        // Draw flick preview popup if active
+        if (showFlickPreview && currentFlickKey != null) {
+            drawFlickPreview(canvas, currentFlickKey!!)
         }
     }
 
@@ -477,9 +493,15 @@ class FlickKeyboardView @JvmOverloads constructor(
     private fun drawSideKey(canvas: Canvas, key: Key) {
         val padding = 3f
 
+        // Highlight shift key when shifted
+        val isShiftActive = key.codes.isNotEmpty() &&
+                key.codes[0] == Key.KEYCODE_SHIFT &&
+                flickKeyboard?.isShifted == true
+
         // Use special key background for modifier/function keys, regular for others
         val bgColor = when {
             key.pressed -> keyPressedColor
+            isShiftActive -> flickEdgeHighlightColor
             key.modifier -> specialKeyBackgroundColor
             else -> keyBackgroundColor
         }
@@ -513,6 +535,34 @@ class FlickKeyboardView @JvmOverloads constructor(
         val x = key.x + key.width / 2f
         val y = key.y + (key.height + textPaint.textSize - textPaint.descent()) / 2f
         canvas.drawText(key.label.toString(), x, y, textPaint)
+    }
+
+    /**
+     * Draw a shifted key (simple centered text, no flick hints).
+     */
+    private fun drawShiftedKey(canvas: Canvas, key: Key) {
+        val padding = 3f
+
+        paint.style = Paint.Style.FILL
+        paint.color = if (key.pressed) keyPressedColor else keyBackgroundColor
+
+        val rect = RectF(
+            key.x + padding,
+            key.y + padding,
+            key.x + key.width - padding,
+            key.y + key.height - padding
+        )
+        canvas.drawRoundRect(rect, cornerRadius, cornerRadius, paint)
+
+        if (key.label.isNullOrEmpty()) return
+
+        textPaint.color = keyTextColor
+        // Use smaller text for multi-character labels
+        val label = key.label.toString()
+        textPaint.textSize = if (label.length > 2) centerTextSize * 0.75f else centerTextSize
+        val x = key.x + key.width / 2f
+        val y = key.y + (key.height + textPaint.textSize - textPaint.descent()) / 2f
+        canvas.drawText(label, x, y, textPaint)
     }
 
     /**
@@ -581,24 +631,24 @@ class FlickKeyboardView @JvmOverloads constructor(
         val cellWidth = popupWidth / 2f
         val centerY = adjustedY + popupHeight / 2f
 
-        // Draw ၊ (single tap)
+        // Draw ။ (single tap)
         textPaint.color = keyTextColor
         textPaint.textSize = centerTextSize * 1.3f
         val leftCenterX = adjustedX + cellWidth / 2f
-        canvas.drawText("၊", leftCenterX, centerY + textPaint.textSize / 3f, textPaint)
+        canvas.drawText("။", leftCenterX, centerY + textPaint.textSize / 3f, textPaint)
 
-        // Draw "1x" label below
+        // Draw "tap" label below
         textPaint.textSize = hintTextSize * 0.9f
         textPaint.color = hintTextColor
         canvas.drawText("tap", leftCenterX, adjustedY + popupHeight - popupPadding, textPaint)
 
-        // Draw ။ (double tap)
+        // Draw ၊ (double tap)
         textPaint.color = keyTextColor
         textPaint.textSize = centerTextSize * 1.3f
         val rightCenterX = adjustedX + cellWidth + cellWidth / 2f
-        canvas.drawText("။", rightCenterX, centerY + textPaint.textSize / 3f, textPaint)
+        canvas.drawText("၊", rightCenterX, centerY + textPaint.textSize / 3f, textPaint)
 
-        // Draw "2x" label below
+        // Draw "×2" label below
         textPaint.textSize = hintTextSize * 0.9f
         textPaint.color = hintTextColor
         canvas.drawText("×2", rightCenterX, adjustedY + popupHeight - popupPadding, textPaint)
@@ -613,6 +663,61 @@ class FlickKeyboardView @JvmOverloads constructor(
             adjustedY + popupHeight - popupPadding * 2,
             paint
         )
+    }
+
+    /**
+     * Draw the flick preview popup above the currently touched flick key.
+     * Shows the selected character in a floating bubble.
+     */
+    private fun drawFlickPreview(canvas: Canvas, key: FlickKey) {
+        if (flickPreviewLabel.isEmpty()) return
+
+        val density = resources.displayMetrics.density
+        val popupSize = key.width * 0.7f
+        val popupHeight = key.height * 0.75f
+        val popupRadius = popupSize / 2f  // Fully rounded (pill/circle shape)
+        val gap = 4 * density
+
+        // Position popup above the key, centered horizontally
+        val popupX = key.x + key.width / 2f - popupSize / 2f
+        val popupY = key.y - popupHeight - gap
+
+        // Ensure popup stays within screen bounds
+        val adjustedX = popupX.coerceIn(0f, width - popupSize)
+        val adjustedY = popupY.coerceAtLeast(0f)
+
+        // Draw shadow
+        val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+        shadowPaint.color = 0x30000000
+        shadowPaint.style = Paint.Style.FILL
+        canvas.drawRoundRect(
+            adjustedX + 2 * density,
+            adjustedY + 2 * density,
+            adjustedX + popupSize + 2 * density,
+            adjustedY + popupHeight + 2 * density,
+            popupRadius, popupRadius,
+            shadowPaint
+        )
+
+        // Draw popup background
+        paint.style = Paint.Style.FILL
+        paint.color = 0xFF2A2A35.toInt()
+        val popupRect = RectF(adjustedX, adjustedY, adjustedX + popupSize, adjustedY + popupHeight)
+        canvas.drawRoundRect(popupRect, popupRadius, popupRadius, paint)
+
+        // Draw border matching flick edge highlight color
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = 1.5f * density
+        paint.color = flickEdgeHighlightColor
+        canvas.drawRoundRect(popupRect, popupRadius, popupRadius, paint)
+        paint.style = Paint.Style.FILL
+
+        // Draw the character label
+        textPaint.color = keyTextColor
+        textPaint.textSize = centerTextSize * 1.1f
+        val textX = adjustedX + popupSize / 2f
+        val textY = adjustedY + (popupHeight + textPaint.textSize - textPaint.descent()) / 2f
+        canvas.drawText(flickPreviewLabel, textX, textY, textPaint)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -643,6 +748,19 @@ class FlickKeyboardView @JvmOverloads constructor(
         touchDownX = rawX
         touchDownY = rawY
 
+        // When shifted, check shifted keys in the main area
+        if (keyboard.isShifted) {
+            val shiftedKey = keyboard.getShiftedKeyAt(touchX, touchY)
+            if (shiftedKey != null) {
+                currentShiftedKey = shiftedKey
+                currentFlickKey = null
+                currentSpecialKey = null
+                shiftedKey.pressed = true
+                invalidate()
+                return
+            }
+        }
+
         // Check if touching a flick key (center 3 columns)
         val flickKey = keyboard.getFlickKeyAt(touchX, touchY)
         if (flickKey != null) {
@@ -650,6 +768,10 @@ class FlickKeyboardView @JvmOverloads constructor(
             currentSpecialKey = null
             flickKey.pressed = true
             currentDirection = FlickDirection.CENTER
+
+            // Show flick preview with center character
+            flickPreviewLabel = flickKey.center.label
+            showFlickPreview = flickPreviewLabel.isNotEmpty()
 
             // Start long-press timer for flick keys that support it (e.g., ာ key)
             if (flickKey.center.code == AA_VOWEL) {
@@ -699,6 +821,15 @@ class FlickKeyboardView @JvmOverloads constructor(
                 if (newDirection != FlickDirection.CENTER) {
                     handler.removeMessages(MSG_FLICK_KEY_LONGPRESS)
                 }
+
+                // Update flick preview label
+                val character = flickKey.getCharacterForDirection(
+                    newDirection,
+                    flickKeyboard?.isShifted ?: false
+                )
+                flickPreviewLabel = character?.label ?: ""
+                showFlickPreview = flickPreviewLabel.isNotEmpty()
+
                 // Redraw to show directional effect on the key
                 invalidate()
             }
@@ -710,6 +841,16 @@ class FlickKeyboardView @JvmOverloads constructor(
         handler.removeMessages(MSG_LONGPRESS)
         handler.removeMessages(MSG_FLICK_KEY_LONGPRESS)
         repeatKey = null
+
+        // Handle shifted key release
+        val shiftedKey = currentShiftedKey
+        if (shiftedKey != null && !cancelled) {
+            val text = shiftedKey.text?.toString()
+            if (!text.isNullOrEmpty()) {
+                actionListener?.onFlickShiftedKey(text)
+            }
+            shiftedKey.pressed = false
+        }
 
         // Handle flick key release
         val flickKey = currentFlickKey
@@ -746,9 +887,12 @@ class FlickKeyboardView @JvmOverloads constructor(
         // Reset state
         currentFlickKey = null
         currentSpecialKey = null
+        currentShiftedKey = null
         currentDirection = FlickDirection.CENTER
         showPunctuationPopup = false
         punctuationPopupKey = null
+        showFlickPreview = false
+        flickPreviewLabel = ""
 
         invalidate()
     }
@@ -785,14 +929,14 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     /**
      * Handle punctuation key release with double-tap detection.
-     * Single tap: ၊ (Little Section)
-     * Double tap: ။ (Section)
+     * Single tap: ။ (Section)
+     * Double tap: ၊ (Little Section)
      */
     private fun handlePunctuationKeyRelease(key: Key) {
         val currentTime = System.currentTimeMillis()
 
         if (pendingPunctuationTap && (currentTime - lastPunctuationTapTime) < DOUBLE_TAP_TIMEOUT) {
-            // Double tap detected - cancel pending single tap and send ။
+            // Double tap detected - cancel pending single tap and send ၊
             handler.removeMessages(MSG_PUNCTUATION_SINGLE_TAP)
             pendingPunctuationTap = false
 
@@ -814,7 +958,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     private fun executePunctuationSingleTap() {
         if (pendingPunctuationTap) {
             pendingPunctuationTap = false
-            // Send ၊ (Little Section)
+            // Send ။ (Section)
             actionListener?.onPunctuationSingleTap()
         }
     }
@@ -834,6 +978,8 @@ class FlickKeyboardView @JvmOverloads constructor(
                     // Reset key state to prevent normal tap action
                     flickKey.pressed = false
                     currentFlickKey = null
+                    showFlickPreview = false
+                    flickPreviewLabel = ""
                     invalidate()
                 }
             }

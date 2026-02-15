@@ -35,6 +35,9 @@ class FlickKeyboard(
     /** Whether the keyboard is in shifted state. */
     var isShifted: Boolean = false
 
+    /** Shifted keys (3x4 grid of extra characters, tap only). */
+    val shiftedKeys: MutableList<Key> = mutableListOf()
+
     /** Total width of the keyboard. */
     val totalWidth: Int
 
@@ -94,6 +97,9 @@ class FlickKeyboard(
 
         // Create side keys
         createSideKeys()
+
+        // Create shifted keys
+        createShiftedKeys()
     }
 
     /**
@@ -134,6 +140,7 @@ class FlickKeyboard(
         val rightStartX = (keyWidth + horizontalGap) * 4
 
         // Load icons
+        val shiftIcon = ContextCompat.getDrawable(context, R.drawable.sym_keyboard_shift)
         val deleteIcon = ContextCompat.getDrawable(context, R.drawable.sym_keyboard_delete)
         val returnIcon = ContextCompat.getDrawable(context, R.drawable.sym_keyboard_return)
         val languageSwitchIcon = ContextCompat.getDrawable(context, R.drawable.sym_keyboard_language_switch)
@@ -175,14 +182,15 @@ class FlickKeyboard(
                     repeatable = false,
                     modifier = true
                 )
-                else -> Key(  // Other rows: placeholder
-                    codes = intArrayOf(0),
-                    label = "",
+                else -> Key(  // Row 0: Shift key
+                    codes = intArrayOf(Key.KEYCODE_SHIFT),
+                    icon = shiftIcon,
                     x = leftStartX,
                     y = rowY,
                     width = keyWidth,
                     height = keyHeight,
-                    repeatable = false
+                    repeatable = false,
+                    modifier = true
                 )
             }
             leftSideKeys.add(leftKey)
@@ -221,7 +229,7 @@ class FlickKeyboard(
                 )
                 3 -> Key(  // Row 3: Punctuation (၊/။) - single tap: ၊, double tap: ။
                     codes = intArrayOf(Key.KEYCODE_PUNCTUATION),
-                    label = "၊ ။",  // Show both characters with space
+                    label = "။ ၊",  // Show both characters with space
                     x = rightStartX,
                     y = rowY,
                     width = keyWidth,
@@ -292,6 +300,52 @@ class FlickKeyboard(
      */
     fun getAllSideKeys(): List<Key> {
         return leftSideKeys + rightSideKeys
+    }
+
+    /**
+     * Create shifted keys (3x4 grid of extra characters).
+     * These replace the main flick keys when shift is active.
+     */
+    private fun createShiftedKeys() {
+        val shiftedLabels = arrayOf(
+            "၎င်း", "င်္", "ဏ္ဍ",
+            "ဪ", "ဋ္ဌ", "ဏ္ဌ",
+            "+", "×", ".",
+            "-", "÷", ","
+        )
+
+        val mainStartX = keyWidth + horizontalGap
+
+        var index = 0
+        for (row in 0 until flickRows) {
+            for (col in 0 until mainColumns) {
+                val label = shiftedLabels[index]
+                val key = Key(
+                    codes = intArrayOf(0),  // We use text field instead
+                    label = label,
+                    text = label,
+                    x = mainStartX + (col * (keyWidth + horizontalGap)),
+                    y = row * (keyHeight + verticalGap),
+                    width = keyWidth,
+                    height = keyHeight,
+                    repeatable = false
+                )
+                shiftedKeys.add(key)
+                index++
+            }
+        }
+    }
+
+    /**
+     * Get the shifted key at the given coordinates.
+     */
+    fun getShiftedKeyAt(x: Int, y: Int): Key? {
+        for (key in shiftedKeys) {
+            if (key.isInside(x, y)) {
+                return key
+            }
+        }
+        return null
     }
 
     /**

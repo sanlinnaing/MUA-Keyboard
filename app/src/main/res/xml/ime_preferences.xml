@@ -22,7 +22,7 @@
         android:title="@string/choose_theme_title" />
 
     <ListPreference
-        android:defaultValue="word"
+        android:defaultValue="both"
         android:entries="@array/suggestionMethodNameArray"
         android:entryValues="@array/suggestionMethodValueArray"
         android:key="suggestion_method"

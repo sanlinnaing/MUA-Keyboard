@@ -11,7 +11,7 @@ object KeyboardConfig {
     private var showHintLabel: Boolean = true
     private var doubleTap: Boolean = false
     private var proximityEnabled: Boolean = true
-    private var proximityThresholdDp: Float = 20f
+    private var proximityThresholdDp: Float = 10f
     private var hapticEnabled: Boolean = true
     private var hapticStrength: Int = 25  // 0-100 range (low = EFFECT_TICK)
 

@@ -70,14 +70,14 @@ interface OnFlickKeyboardActionListener {
 
     /**
      * Called when the punctuation key is single-tapped.
-     * Should output ၊ (Little Section, U+104A).
+     * Should output ။ (Section, U+104B).
      */
     fun onPunctuationSingleTap()
 
     /**
      * Called when the punctuation key is double-tapped.
-     * Should output ။ (Section, U+104B) directly.
-     * Note: The single tap ၊ was not yet inserted (it was pending), so no deletion needed.
+     * Should output ၊ (Little Section, U+104A) directly.
+     * Note: The single tap ။ was not yet inserted (it was pending), so no deletion needed.
      */
     fun onPunctuationDoubleTap()
 
@@ -89,4 +89,12 @@ interface OnFlickKeyboardActionListener {
      * @param alternateCode The Unicode code point for the alternate character
      */
     fun onFlickKeyLongPress(key: FlickKey, alternateCode: Int)
+
+    /**
+     * Called when a shifted key is tapped in the flick keyboard.
+     * The keyboard should commit the text and unshift.
+     *
+     * @param text The text string to commit
+     */
+    fun onFlickShiftedKey(text: String)
 }

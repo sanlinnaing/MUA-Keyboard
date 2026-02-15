@@ -112,7 +112,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
     private val preferenceChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { prefs, key ->
         when (key) {
             "suggestion_method" -> {
-                val methodStr = prefs.getString("suggestion_method", "word") ?: "word"
+                val methodStr = prefs.getString("suggestion_method", "both") ?: "both"
                 val method = when (methodStr) {
                     "syllable" -> SuggestionMethod.SYLLABLE
                     "both" -> SuggestionMethod.BOTH
@@ -224,7 +224,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
 
     private fun initializeSuggestionEngine() {
         val sharedPref = PreferenceManager.getDefaultSharedPreferences(this)
-        val methodStr = sharedPref.getString("suggestion_method", "word") ?: "word"
+        val methodStr = sharedPref.getString("suggestion_method", "both") ?: "both"
         val method = when (methodStr) {
             "syllable" -> SuggestionMethod.SYLLABLE
             "both" -> SuggestionMethod.BOTH
@@ -2101,6 +2101,11 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                 ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
                 ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
             }
+            Key.KEYCODE_SHIFT -> {
+                // Toggle flick keyboard shift state
+                flickKeyboard?.toggleShift()
+                flickKv?.invalidate()
+            }
             Key.KEYCODE_EMOJI -> {
                 showEmojiView()
             }
@@ -2145,25 +2150,6 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
 
         // Play sound and haptic feedback
         if (KeyboardConfig.isSoundOn()) {
-            SoundManager.playClick(this, 0x104A)
-        }
-        if (KeyboardConfig.isHapticEnabled()) {
-            HapticManager.performHapticFeedback(this)
-        }
-
-        // End composing (word boundary at punctuation)
-        handleMyanmarWordBoundary()
-
-        // Insert ၊ (Little Section)
-        ic.commitText("၊", 1)
-        updateSuggestions()
-    }
-
-    override fun onPunctuationDoubleTap() {
-        val ic = currentInputConnection ?: return
-
-        // Play sound and haptic feedback
-        if (KeyboardConfig.isSoundOn()) {
             SoundManager.playClick(this, 0x104B)
         }
         if (KeyboardConfig.isHapticEnabled()) {
@@ -2173,9 +2159,28 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         // End composing (word boundary at punctuation)
         handleMyanmarWordBoundary()
 
-        // Double tap detected before single tap was executed,
-        // so just insert ။ (Section) directly - no deletion needed
+        // Insert ။ (Section)
         ic.commitText("။", 1)
+        updateSuggestions()
+    }
+
+    override fun onPunctuationDoubleTap() {
+        val ic = currentInputConnection ?: return
+
+        // Play sound and haptic feedback
+        if (KeyboardConfig.isSoundOn()) {
+            SoundManager.playClick(this, 0x104A)
+        }
+        if (KeyboardConfig.isHapticEnabled()) {
+            HapticManager.performHapticFeedback(this)
+        }
+
+        // End composing (word boundary at punctuation)
+        handleMyanmarWordBoundary()
+
+        // Double tap detected before single tap was executed,
+        // so just insert ၊ (Little Section) directly - no deletion needed
+        ic.commitText("၊", 1)
         updateSuggestions()
     }
 
@@ -2204,6 +2209,38 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
             handleMyanmarComposing(ic, processedText)
             updateComposingRegion(ic)
         }
+
+        updateSuggestions()
+    }
+
+    override fun onFlickShiftedKey(text: String) {
+        val ic = currentInputConnection ?: return
+
+        // Play sound and haptic feedback
+        if (KeyboardConfig.isSoundOn()) {
+            SoundManager.playClick(this, text.codePointAt(0))
+        }
+        if (KeyboardConfig.isHapticEnabled()) {
+            HapticManager.performHapticFeedback(this)
+        }
+
+        // Finish composing before committing
+        if (isComposing) {
+            ic.finishComposingText()
+        }
+
+        // Commit the text string directly
+        ic.commitText(text, 1)
+
+        // Track composing state for Myanmar text
+        if (SyllableBreaker.containsMyanmarText(text)) {
+            handleMyanmarComposing(ic, text)
+            updateComposingRegion(ic)
+        }
+
+        // Unshift back to normal layout
+        flickKeyboard?.isShifted = false
+        flickKv?.invalidate()
 
         updateSuggestions()
     }
