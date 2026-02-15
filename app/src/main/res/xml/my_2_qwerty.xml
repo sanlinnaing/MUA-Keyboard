@@ -30,7 +30,7 @@
         <Key android:codes="4126,4159" android:keyLabel="သ" android:popupCharacters="ဿ"/>
         <Key android:codes="4101,4111" android:keyLabel="စ" android:popupCharacters="ဏ" android:keyEdgeFlags="right"/>
     </Row>
-    
+
     <Row>
         <Key android:codes="4145,4119" android:keyLabel="ေ" android:popupCharacters="ဗ" android:keyEdgeFlags="left"/>
         <Key android:codes="4155,4158" android:keyLabel="ျ" android:popupCharacters="ှ"/>
@@ -43,10 +43,10 @@
         <Key android:codes="4144,4115" android:keyLabel="ူ" android:popupCharacters="ဓ"/>
         <Key android:codes="4152,4098" android:keyLabel="း" android:popupCharacters="ဂ" android:keyEdgeFlags="right"/>
     </Row>
-    
+
     <Row>
-        
-        <Key android:codes="-1" android:keyIcon="@drawable/sym_keyboard_shift" 
+
+        <Key android:codes="-1" android:keyIcon="@drawable/sym_keyboard_shift"
                 android:keyWidth="14%p" android:isModifier="true"
                  android:keyEdgeFlags="left"/>
         <Key android:codes="4118,4103" android:keyLabel="ဖ" android:popupCharacters="ဇ"/>
@@ -56,10 +56,10 @@
         <Key android:codes="4120,4122" android:keyLabel="ဘ" android:popupCharacters="ယ"/>
         <Key android:codes="4106,4105" android:keyLabel="ည" android:popupCharacters="ဉ"/>
         <Key android:codes="4140,4134" android:keyLabel="ာ" android:popupCharacters="ဦ"/>
-        <Key android:codes="300000" android:keyIcon="@drawable/sym_keyboard_delete" 
+        <Key android:codes="300000" android:keyIcon="@drawable/sym_keyboard_delete"
                 android:keyWidth="14%p" android:isRepeatable="true" android:keyEdgeFlags="right" android:isModifier="true"/>
     </Row>
-    
+
     <Row android:rowEdgeFlags="bottom">
         <Key android:codes="-2" android:keyLabel="၁၂၃" android:keyWidth="11%p" android:keyEdgeFlags="left" android:isModifier="true"/>
         <!--
@@ -68,15 +68,14 @@
         -->
         <Key android:codes="-101" android:keyIcon="@drawable/sym_keyboard_language_switch"
                 android:keyWidth="11%p" android:isModifier="true"/>
-       
-        <Key android:codes="-202" android:keyIcon="@drawable/sym_keyboard_emoji" 
+
+        <Key android:codes="-202" android:keyIcon="@drawable/sym_keyboard_emoji"
                 android:keyWidth="9%p" android:isModifier="true"/>
-        <Key android:codes="32" android:keyIcon="@drawable/sym_keyboard_space" 
+        <Key android:codes="32" android:keyIcon="@drawable/sym_keyboard_space"
                 android:keyWidth="34%p" android:isRepeatable="true" android:isModifier="true"/>
-        <Key android:codes="4171,4170" android:keyLabel="၊  ။"
+        <Key android:codes="4171,4170" android:keyLabel="။ ၊"
                 android:keyWidth="11%p" android:isModifier="true"/>
-        <Key android:codes="-4" android:keyIcon="@drawable/sym_keyboard_return" 
+        <Key android:codes="-4" android:keyIcon="@drawable/sym_keyboard_return"
                 android:keyWidth="18%p" android:keyEdgeFlags="right" android:isModifier="true"/>
     </Row>
 </Keyboard>
-    
