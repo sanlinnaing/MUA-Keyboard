@@ -14,6 +14,8 @@ object KeyboardConfig {
     private var proximityThresholdDp: Float = 10f
     private var hapticEnabled: Boolean = true
     private var hapticStrength: Int = 25  // 0-100 range (low = EFFECT_TICK)
+    private var flickHandMode: String = "full"  // "full", "left", "right"
+    private var flickCompactSize: Int = 85  // 50-100 percent of screen width
 
     @JvmStatic
     fun isSoundOn(): Boolean = soundOn
@@ -86,5 +88,21 @@ object KeyboardConfig {
     fun setHapticStrength(value: Int) {
         // Clamp to 0-100 range
         hapticStrength = value.coerceIn(0, 100)
+    }
+
+    @JvmStatic
+    fun getFlickHandMode(): String = flickHandMode
+
+    @JvmStatic
+    fun setFlickHandMode(value: String) {
+        flickHandMode = value
+    }
+
+    @JvmStatic
+    fun getFlickCompactSize(): Int = flickCompactSize
+
+    @JvmStatic
+    fun setFlickCompactSize(value: Int) {
+        flickCompactSize = value.coerceIn(50, 100)
     }
 }

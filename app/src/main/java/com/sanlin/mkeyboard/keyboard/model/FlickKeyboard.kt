@@ -3,6 +3,7 @@ package com.sanlin.mkeyboard.keyboard.model
 import android.content.Context
 import androidx.core.content.ContextCompat
 import com.sanlin.mkeyboard.R
+import com.sanlin.mkeyboard.config.KeyboardConfig
 import com.sanlin.mkeyboard.keyboard.KeyboardHeightCalculator
 import com.sanlin.mkeyboard.keyboard.data.FlickKeyboardParser
 
@@ -70,24 +71,46 @@ class FlickKeyboard(
     /** Horizontal gap between keys. */
     private val horizontalGap: Int
 
+    /** X offset for one-handed mode (0 for full/left, positive for right). */
+    val offsetX: Int
+
+    /** The width of the key layout area (75% of screen in compact mode, full otherwise). */
+    val layoutWidth: Int
+
+    /** The full screen width (view always fills screen). */
+    private val screenWidth: Int
+
     init {
         val displayMetrics = context.resources.displayMetrics
-        totalWidth = displayMetrics.widthPixels
+        screenWidth = displayMetrics.widthPixels
 
-        // Gap is 1% of screen width (same for horizontal and vertical)
-        val gap = (totalWidth * 0.01f).toInt().coerceAtLeast(4)
+        // Determine compact mode from config
+        val handMode = KeyboardConfig.getFlickHandMode()
+        val isCompact = handMode != "full"
+        val compactRatio = KeyboardConfig.getFlickCompactSize() / 100f
+        layoutWidth = if (isCompact) (screenWidth * compactRatio).toInt() else screenWidth
+        offsetX = when (handMode) {
+            "right" -> screenWidth - layoutWidth
+            else -> 0  // "full" or "left"
+        }
+
+        // View still fills the screen; totalWidth is the layout area for key sizing
+        totalWidth = screenWidth
+
+        // Gap is 1% of layout width (same for horizontal and vertical)
+        val gap = (layoutWidth * 0.01f).toInt().coerceAtLeast(4)
         verticalGap = gap
         horizontalGap = gap
 
-        // Calculate key width for 5 columns
-        // totalWidth = 5*keyWidth + 4*gap
-        keyWidth = (totalWidth - (4 * gap)) / 5
+        // Calculate key width for 5 columns within the layout area
+        // layoutWidth = 5*keyWidth + 4*gap
+        keyWidth = (layoutWidth - (4 * gap)) / 5
 
         // Key height is ~80% of width (reduced by 20%)
         keyHeight = (keyWidth * 0.80f).toInt()
 
-        // Total height - use the standard calculator for consistency with normal keyboard
-        totalHeight = KeyboardHeightCalculator.getStandardKeyboardHeight(context)
+        // Total height - proportional to the layout width (compact keys = shorter keyboard)
+        totalHeight = KeyboardHeightCalculator.getKeyboardHeightForWidth(layoutWidth)
 
         // Load the main flick keys from XML layout
         flickKeys = FlickKeyboardParser.parse(context, layoutResId)
@@ -108,7 +131,7 @@ class FlickKeyboard(
      */
     private fun calculateFlickKeyPositions() {
         // Starting X for main keys (column 1, after left side key + gap)
-        val mainStartX = keyWidth + horizontalGap
+        val mainStartX = offsetX + keyWidth + horizontalGap
 
         // Calculate main flick keys (columns 1-3) with gaps between them
         var keyIndex = 0
@@ -134,10 +157,10 @@ class FlickKeyboard(
      */
     private fun createSideKeys() {
         // Left side key X position
-        val leftStartX = 0
+        val leftStartX = offsetX
 
         // Right side key X position (column 4)
-        val rightStartX = (keyWidth + horizontalGap) * 4
+        val rightStartX = offsetX + (keyWidth + horizontalGap) * 4
 
         // Load icons
         val shiftIcon = ContextCompat.getDrawable(context, R.drawable.sym_keyboard_shift)
@@ -314,7 +337,7 @@ class FlickKeyboard(
             "-", "÷", ","
         )
 
-        val mainStartX = keyWidth + horizontalGap
+        val mainStartX = offsetX + keyWidth + horizontalGap
 
         var index = 0
         for (row in 0 until flickRows) {

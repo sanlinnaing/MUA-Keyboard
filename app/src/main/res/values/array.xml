@@ -29,6 +29,17 @@
         <item>both</item>
     </string-array>
 
+    <string-array name="flickHandModeNameArray">
+        <item>Full</item>
+        <item>Left-hand</item>
+        <item>Right-hand</item>
+    </string-array>
+    <string-array name="flickHandModeValueArray">
+        <item>full</item>
+        <item>left</item>
+        <item>right</item>
+    </string-array>
+
     <string-array name="navBarSpaceNameArray">
         <item>Auto</item>
         <item>On</item>

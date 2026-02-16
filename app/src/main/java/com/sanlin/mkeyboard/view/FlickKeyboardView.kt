@@ -95,7 +95,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         const val TALL_AA = 0x102B         // ါ
 
         // Double tap timing
-        const val DOUBLE_TAP_TIMEOUT = 300L
+        const val DOUBLE_TAP_TIMEOUT = 400L
 
         // Long press timing for flick keys
         const val FLICK_LONGPRESS_TIMEOUT = 400L
@@ -104,10 +104,6 @@ class FlickKeyboardView @JvmOverloads constructor(
     // Double tap tracking for punctuation key
     private var lastPunctuationTapTime: Long = 0
     private var pendingPunctuationTap: Boolean = false
-
-    // Punctuation popup tracking
-    private var showPunctuationPopup: Boolean = false
-    private var punctuationPopupKey: Key? = null
 
     // Flick preview popup tracking
     private var showFlickPreview: Boolean = false
@@ -242,6 +238,11 @@ class FlickKeyboardView @JvmOverloads constructor(
         // Update theme colors
         updateColorsForTheme()
 
+        // Draw background for empty side area in compact mode
+        if (keyboard.offsetX > 0 || KeyboardConfig.getFlickHandMode() == "left") {
+            drawCompactBackground(canvas, keyboard)
+        }
+
         // Draw main area: either shifted keys or normal flick keys
         if (keyboard.isShifted) {
             for (key in keyboard.shiftedKeys) {
@@ -256,11 +257,6 @@ class FlickKeyboardView @JvmOverloads constructor(
         // Draw side keys (normal keys, left and right columns)
         for (key in keyboard.getAllSideKeys()) {
             drawSideKey(canvas, key)
-        }
-
-        // Draw punctuation popup if active
-        if (showPunctuationPopup && punctuationPopupKey != null) {
-            drawPunctuationPopup(canvas, punctuationPopupKey!!)
         }
 
         // Draw flick preview popup if active
@@ -581,91 +577,6 @@ class FlickKeyboardView @JvmOverloads constructor(
     }
 
     /**
-     * Draw the punctuation popup showing both ၊ and ။ options.
-     * Popup appears above the key.
-     */
-    private fun drawPunctuationPopup(canvas: Canvas, key: Key) {
-        val density = resources.displayMetrics.density
-        val popupWidth = key.width * 2f
-        val popupHeight = key.height * 1.2f
-        val popupPadding = 8 * density
-
-        // Position popup above the key, centered horizontally
-        val popupX = key.x + key.width / 2f - popupWidth / 2f
-        val popupY = key.y - popupHeight - 8 * density
-
-        // Ensure popup stays within screen bounds
-        val adjustedX = popupX.coerceIn(0f, width - popupWidth)
-        val adjustedY = popupY.coerceAtLeast(0f)
-
-        // Draw popup background with shadow
-        paint.style = Paint.Style.FILL
-        paint.color = 0xFF2A2A35.toInt()  // Dark background
-
-        // Draw shadow
-        val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-        shadowPaint.color = 0x40000000
-        shadowPaint.style = Paint.Style.FILL
-        canvas.drawRoundRect(
-            adjustedX + 4 * density,
-            adjustedY + 4 * density,
-            adjustedX + popupWidth + 4 * density,
-            adjustedY + popupHeight + 4 * density,
-            cornerRadius * 1.5f,
-            cornerRadius * 1.5f,
-            shadowPaint
-        )
-
-        // Draw popup background
-        val popupRect = RectF(adjustedX, adjustedY, adjustedX + popupWidth, adjustedY + popupHeight)
-        canvas.drawRoundRect(popupRect, cornerRadius * 1.5f, cornerRadius * 1.5f, paint)
-
-        // Draw border
-        paint.style = Paint.Style.STROKE
-        paint.strokeWidth = 1f * density
-        paint.color = 0xFF4A4A55.toInt()
-        canvas.drawRoundRect(popupRect, cornerRadius * 1.5f, cornerRadius * 1.5f, paint)
-        paint.style = Paint.Style.FILL
-
-        // Draw the two punctuation options
-        val cellWidth = popupWidth / 2f
-        val centerY = adjustedY + popupHeight / 2f
-
-        // Draw ။ (single tap)
-        textPaint.color = keyTextColor
-        textPaint.textSize = centerTextSize * 1.3f
-        val leftCenterX = adjustedX + cellWidth / 2f
-        canvas.drawText("။", leftCenterX, centerY + textPaint.textSize / 3f, textPaint)
-
-        // Draw "tap" label below
-        textPaint.textSize = hintTextSize * 0.9f
-        textPaint.color = hintTextColor
-        canvas.drawText("tap", leftCenterX, adjustedY + popupHeight - popupPadding, textPaint)
-
-        // Draw ၊ (double tap)
-        textPaint.color = keyTextColor
-        textPaint.textSize = centerTextSize * 1.3f
-        val rightCenterX = adjustedX + cellWidth + cellWidth / 2f
-        canvas.drawText("၊", rightCenterX, centerY + textPaint.textSize / 3f, textPaint)
-
-        // Draw "×2" label below
-        textPaint.textSize = hintTextSize * 0.9f
-        textPaint.color = hintTextColor
-        canvas.drawText("×2", rightCenterX, adjustedY + popupHeight - popupPadding, textPaint)
-
-        // Draw vertical divider
-        paint.color = 0xFF4A4A55.toInt()
-        paint.strokeWidth = 1f * density
-        canvas.drawLine(
-            adjustedX + cellWidth,
-            adjustedY + popupPadding * 2,
-            adjustedX + cellWidth,
-            adjustedY + popupHeight - popupPadding * 2,
-            paint
-        )
-    }
-
-    /**
      * Draw the flick preview popup above the currently touched flick key.
      * Shows the selected character in a floating bubble.
      */
@@ -718,6 +629,38 @@ class FlickKeyboardView @JvmOverloads constructor(
         val textX = adjustedX + popupSize / 2f
         val textY = adjustedY + (popupHeight + textPaint.textSize - textPaint.descent()) / 2f
         canvas.drawText(flickPreviewLabel, textX, textY, textPaint)
+    }
+
+    /**
+     * Draw a subtle background tint on the empty side when in compact (one-handed) mode.
+     */
+    private fun drawCompactBackground(canvas: Canvas, keyboard: FlickKeyboard) {
+        val handMode = KeyboardConfig.getFlickHandMode()
+        val density = resources.displayMetrics.density
+        val dividerWidth = 1.5f * density
+
+        paint.style = Paint.Style.FILL
+        // Slightly darker background for the empty area
+        paint.color = dividerColor
+
+        when (handMode) {
+            "left" -> {
+                // Empty area is on the right side, after the compact layout
+                val emptyStartX = keyboard.layoutWidth.toFloat()
+                canvas.drawRect(emptyStartX, 0f, width.toFloat(), height.toFloat(), paint)
+                // Draw divider line
+                paint.color = flickEdgeHighlightColor
+                canvas.drawRect(emptyStartX, 0f, emptyStartX + dividerWidth, height.toFloat(), paint)
+            }
+            "right" -> {
+                // Empty area is on the left side, before the offset
+                val emptyEndX = keyboard.offsetX.toFloat()
+                canvas.drawRect(0f, 0f, emptyEndX, height.toFloat(), paint)
+                // Draw divider line
+                paint.color = flickEdgeHighlightColor
+                canvas.drawRect(emptyEndX - dividerWidth, 0f, emptyEndX, height.toFloat(), paint)
+            }
+        }
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -792,13 +735,6 @@ class FlickKeyboardView @JvmOverloads constructor(
             currentSpecialKey = sideKey  // Treat like special key
             currentFlickKey = null
             sideKey.pressed = true
-
-            // Show popup for punctuation key
-            val primaryCode = if (sideKey.codes.isNotEmpty()) sideKey.codes[0] else 0
-            if (primaryCode == Key.KEYCODE_PUNCTUATION) {
-                showPunctuationPopup = true
-                punctuationPopupKey = sideKey
-            }
 
             // Notify listener
             actionListener?.onKeyDown(sideKey)
@@ -889,8 +825,6 @@ class FlickKeyboardView @JvmOverloads constructor(
         currentSpecialKey = null
         currentShiftedKey = null
         currentDirection = FlickDirection.CENTER
-        showPunctuationPopup = false
-        punctuationPopupKey = null
         showFlickPreview = false
         flickPreviewLabel = ""
 
@@ -929,36 +863,20 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     /**
      * Handle punctuation key release with double-tap detection.
-     * Single tap: ။ (Section)
-     * Double tap: ၊ (Little Section)
+     * Single tap: ။ (Section) — output immediately
+     * Double tap: delete ။ and replace with ၊ (Little Section)
      */
     private fun handlePunctuationKeyRelease(key: Key) {
         val currentTime = System.currentTimeMillis()
 
         if (pendingPunctuationTap && (currentTime - lastPunctuationTapTime) < DOUBLE_TAP_TIMEOUT) {
-            // Double tap detected - cancel pending single tap and send ၊
-            handler.removeMessages(MSG_PUNCTUATION_SINGLE_TAP)
+            // Double tap detected — replace ။ with ၊
             pendingPunctuationTap = false
-
-            // Delete the previously inserted ၊ and insert ။
             actionListener?.onPunctuationDoubleTap()
         } else {
-            // First tap - schedule single tap action
+            // First tap — output ။ immediately
             pendingPunctuationTap = true
             lastPunctuationTapTime = currentTime
-
-            // Schedule the single tap action after timeout
-            handler.sendEmptyMessageDelayed(MSG_PUNCTUATION_SINGLE_TAP, DOUBLE_TAP_TIMEOUT)
-        }
-    }
-
-    /**
-     * Execute the pending single tap for punctuation key.
-     */
-    private fun executePunctuationSingleTap() {
-        if (pendingPunctuationTap) {
-            pendingPunctuationTap = false
-            // Send ။ (Section)
             actionListener?.onPunctuationSingleTap()
         }
     }
@@ -1026,7 +944,6 @@ class FlickKeyboardView @JvmOverloads constructor(
                         view.handleLongPress(key)
                     }
                 }
-                MSG_PUNCTUATION_SINGLE_TAP -> view.executePunctuationSingleTap()
                 MSG_FLICK_KEY_LONGPRESS -> {
                     val flickKey = msg.obj as? FlickKey
                     if (flickKey != null) {

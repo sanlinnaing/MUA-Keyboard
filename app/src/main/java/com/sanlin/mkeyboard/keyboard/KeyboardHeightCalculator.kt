@@ -25,9 +25,16 @@ object KeyboardHeightCalculator {
     @JvmStatic
     fun getStandardKeyboardHeight(context: Context): Int {
         val displayMetrics = context.resources.displayMetrics
-        val totalWidth = displayMetrics.widthPixels
+        return getKeyboardHeightForWidth(displayMetrics.widthPixels)
+    }
 
-        // Gap is 1% of screen width (same as flick keyboard)
+    /**
+     * Calculate keyboard height for a given layout width.
+     * Used by flick keyboard in compact (one-handed) mode.
+     */
+    @JvmStatic
+    fun getKeyboardHeightForWidth(totalWidth: Int): Int {
+        // Gap is 1% of layout width (same as flick keyboard)
         val gap = (totalWidth * 0.01f).toInt().coerceAtLeast(4)
 
         // Key width for 5 columns: totalWidth = 5*keyWidth + 4*gap

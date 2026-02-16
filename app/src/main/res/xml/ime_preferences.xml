@@ -58,6 +58,20 @@
         android:title="@string/proximity_correction_title" />
 
     <ListPreference
+        android:defaultValue="full"
+        android:entries="@array/flickHandModeNameArray"
+        android:entryValues="@array/flickHandModeValueArray"
+        android:key="flick_hand_mode"
+        android:summary="@string/flick_hand_mode_summ"
+        android:title="@string/flick_hand_mode_title" />
+    <SeekBarPreference
+        android:key="flick_compact_size"
+        android:title="@string/flick_compact_size_title"
+        android:summary="@string/flick_compact_size_summ"
+        android:defaultValue="85"
+        android:max="100" />
+
+    <ListPreference
         android:defaultValue="auto"
         android:entries="@array/navBarSpaceNameArray"
         android:entryValues="@array/navBarSpaceValueArray"

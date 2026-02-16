@@ -152,6 +152,21 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                 suggestionManager?.clearUserDictionary()
                 resetComposing()
             }
+            "flick_hand_mode" -> {
+                val mode = prefs.getString("flick_hand_mode", "full") ?: "full"
+                KeyboardConfig.setFlickHandMode(mode)
+                // Recreate flick keyboard with new layout and reassign to view
+                flickKeyboard = FlickKeyboard(this@MuaKeyboardService)
+                flickKv?.setKeyboard(flickKeyboard!!)
+            }
+            "flick_compact_size" -> {
+                KeyboardConfig.setFlickCompactSize(prefs.getInt("flick_compact_size", 85))
+                // Recreate flick keyboard if in compact mode
+                if (KeyboardConfig.getFlickHandMode() != "full") {
+                    flickKeyboard = FlickKeyboard(this@MuaKeyboardService)
+                    flickKv?.setKeyboard(flickKeyboard!!)
+                }
+            }
             "nav_bar_space" -> {
                 navBarSpaceMode = prefs.getString("nav_bar_space", "auto") ?: "auto"
                 // Re-create input view to apply new padding
@@ -336,6 +351,8 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         KeyboardConfig.setProximityEnabled(sharedPref.getBoolean("proximity_correction", true))
         KeyboardConfig.setHapticEnabled(sharedPref.getBoolean("haptic_feedback", true))
         KeyboardConfig.setHapticStrength(sharedPref.getInt("haptic_strength", 25))
+        KeyboardConfig.setFlickHandMode(sharedPref.getString("flick_hand_mode", "full") ?: "full")
+        KeyboardConfig.setFlickCompactSize(sharedPref.getInt("flick_compact_size", 85))
 
         kv = when (KeyboardConfig.getCurrentTheme()) {
             6 -> layoutInflater.inflate(R.layout.light_keyboard, null) as? MuaKeyboardView  // Light
@@ -2178,8 +2195,8 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         // End composing (word boundary at punctuation)
         handleMyanmarWordBoundary()
 
-        // Double tap detected before single tap was executed,
-        // so just insert ၊ (Little Section) directly - no deletion needed
+        // Delete the ။ that was inserted on first tap, then insert ၊
+        ic.deleteSurroundingText(1, 0)
         ic.commitText("၊", 1)
         updateSuggestions()
     }
