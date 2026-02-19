@@ -14,7 +14,8 @@ object KeyboardConfig {
     private var proximityThresholdDp: Float = 10f
     private var hapticEnabled: Boolean = true
     private var hapticStrength: Int = 25  // 0-100 range (low = EFFECT_TICK)
-    private var flickHandMode: String = "full"  // "full", "left", "right"
+    private var userHandedness: String = "right"  // "right", "left"
+    private var flickCompactMode: Boolean = false
     private var flickCompactSize: Int = 85  // 50-100 percent of screen width
     private var splitKeyboardMode: String = "off"  // "off", "on", "auto" (auto = landscape only)
     private var splitGapPercent: Int = 15  // 10-30 percent of screen width
@@ -93,11 +94,25 @@ object KeyboardConfig {
     }
 
     @JvmStatic
-    fun getFlickHandMode(): String = flickHandMode
+    fun getUserHandedness(): String = userHandedness
 
     @JvmStatic
-    fun setFlickHandMode(value: String) {
-        flickHandMode = value
+    fun setUserHandedness(value: String) {
+        userHandedness = value
+    }
+
+    @JvmStatic
+    fun isFlickCompactMode(): Boolean = flickCompactMode
+
+    @JvmStatic
+    fun setFlickCompactMode(value: Boolean) {
+        flickCompactMode = value
+    }
+
+    /** Returns "full", "left", or "right" for backward compat with FlickKeyboard/FlickKeyboardView */
+    @JvmStatic
+    fun getEffectiveFlickHandMode(): String {
+        return if (!flickCompactMode) "full" else userHandedness
     }
 
     @JvmStatic

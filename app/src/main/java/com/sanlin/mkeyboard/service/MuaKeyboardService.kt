@@ -165,9 +165,14 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                 suggestionManager?.clearUserDictionary()
                 resetComposing()
             }
-            "flick_hand_mode" -> {
-                val mode = prefs.getString("flick_hand_mode", "full") ?: "full"
-                KeyboardConfig.setFlickHandMode(mode)
+            "user_handedness" -> {
+                KeyboardConfig.setUserHandedness(prefs.getString("user_handedness", "right") ?: "right")
+                // Recreate flick keyboard with new layout and reassign to view
+                flickKeyboard = FlickKeyboard(this@MuaKeyboardService)
+                flickKv?.setKeyboard(flickKeyboard!!)
+            }
+            "flick_compact_mode" -> {
+                KeyboardConfig.setFlickCompactMode(prefs.getBoolean("flick_compact_mode", false))
                 // Recreate flick keyboard with new layout and reassign to view
                 flickKeyboard = FlickKeyboard(this@MuaKeyboardService)
                 flickKv?.setKeyboard(flickKeyboard!!)
@@ -175,7 +180,7 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
             "flick_compact_size" -> {
                 KeyboardConfig.setFlickCompactSize(prefs.getInt("flick_compact_size", 85))
                 // Recreate flick keyboard if in compact mode
-                if (KeyboardConfig.getFlickHandMode() != "full") {
+                if (KeyboardConfig.isFlickCompactMode()) {
                     flickKeyboard = FlickKeyboard(this@MuaKeyboardService)
                     flickKv?.setKeyboard(flickKeyboard!!)
                 }
@@ -378,7 +383,8 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         KeyboardConfig.setProximityEnabled(sharedPref.getBoolean("proximity_correction", true))
         KeyboardConfig.setHapticEnabled(sharedPref.getBoolean("haptic_feedback", true))
         KeyboardConfig.setHapticStrength(sharedPref.getInt("haptic_strength", 25))
-        KeyboardConfig.setFlickHandMode(sharedPref.getString("flick_hand_mode", "full") ?: "full")
+        KeyboardConfig.setUserHandedness(sharedPref.getString("user_handedness", "right") ?: "right")
+        KeyboardConfig.setFlickCompactMode(sharedPref.getBoolean("flick_compact_mode", false))
         KeyboardConfig.setFlickCompactSize(sharedPref.getInt("flick_compact_size", 85))
         KeyboardConfig.setSplitKeyboardMode(getSplitKeyboardMode(sharedPref))
         KeyboardConfig.setSplitGapPercent(sharedPref.getInt("split_gap_size", 15))

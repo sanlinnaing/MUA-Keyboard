@@ -29,15 +29,13 @@
         <item>both</item>
     </string-array>
 
-    <string-array name="flickHandModeNameArray">
-        <item>Full</item>
-        <item>Left-hand</item>
-        <item>Right-hand</item>
+    <string-array name="userHandednessNameArray">
+        <item>Right-handed</item>
+        <item>Left-handed</item>
     </string-array>
-    <string-array name="flickHandModeValueArray">
-        <item>full</item>
-        <item>left</item>
+    <string-array name="userHandednessValueArray">
         <item>right</item>
+        <item>left</item>
     </string-array>
 
     <string-array name="splitKeyboardModeNameArray">

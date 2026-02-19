@@ -239,7 +239,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         updateColorsForTheme()
 
         // Draw background for empty side area in compact mode
-        if (keyboard.offsetX > 0 || KeyboardConfig.getFlickHandMode() == "left") {
+        if (keyboard.offsetX > 0 || KeyboardConfig.getEffectiveFlickHandMode() == "left") {
             drawCompactBackground(canvas, keyboard)
         }
 
@@ -635,7 +635,7 @@ class FlickKeyboardView @JvmOverloads constructor(
      * Draw a subtle background tint on the empty side when in compact (one-handed) mode.
      */
     private fun drawCompactBackground(canvas: Canvas, keyboard: FlickKeyboard) {
-        val handMode = KeyboardConfig.getFlickHandMode()
+        val handMode = KeyboardConfig.getEffectiveFlickHandMode()
         val density = resources.displayMetrics.density
         val dividerWidth = 1.5f * density
 

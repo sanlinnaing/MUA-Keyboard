@@ -56,9 +56,12 @@
     <string name="auto_correct_title">Auto-Correct</string>
     <string name="auto_correct_summ">Fix common contractions (dont → don\'t, Im → I\'m)</string>
 
-    <!-- Flick Hand Mode -->
-    <string name="flick_hand_mode_title">Flick Keyboard Hand Mode</string>
-    <string name="flick_hand_mode_summ">Shrink flick keyboard for one-handed use</string>
+    <!-- User Handedness -->
+    <string name="user_handedness_title">Dominant Hand</string>
+    <string name="user_handedness_summ">Choose your dominant hand for keyboard layout</string>
+    <!-- Flick Compact Mode -->
+    <string name="flick_compact_mode_title">Flick Compact Mode</string>
+    <string name="flick_compact_mode_summ">Shrink flick keyboard for one-handed use</string>
     <string name="flick_compact_size_title">Compact Keyboard Size</string>
     <string name="flick_compact_size_summ">Adjust width (50%–100%) of one-handed keyboard</string>
 

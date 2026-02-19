@@ -85,7 +85,7 @@ class FlickKeyboard(
         screenWidth = displayMetrics.widthPixels
 
         // Determine compact mode from config
-        val handMode = KeyboardConfig.getFlickHandMode()
+        val handMode = KeyboardConfig.getEffectiveFlickHandMode()
         val isCompact = handMode != "full"
         val compactRatio = KeyboardConfig.getFlickCompactSize() / 100f
         layoutWidth = if (isCompact) (screenWidth * compactRatio).toInt() else screenWidth

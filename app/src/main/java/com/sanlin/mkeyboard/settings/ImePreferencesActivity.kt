@@ -84,6 +84,27 @@ open class ImePreferencesActivity : AppCompatActivity() {
                     .apply()
             }
 
+            // Migrate old flick_hand_mode → user_handedness + flick_compact_mode
+            if (prefs.contains("flick_hand_mode")) {
+                val oldMode = prefs.getString("flick_hand_mode", "full") ?: "full"
+                val editor = prefs.edit().remove("flick_hand_mode")
+                when (oldMode) {
+                    "left" -> {
+                        editor.putString("user_handedness", "left")
+                        editor.putBoolean("flick_compact_mode", true)
+                    }
+                    "right" -> {
+                        editor.putString("user_handedness", "right")
+                        editor.putBoolean("flick_compact_mode", true)
+                    }
+                    else -> {
+                        editor.putString("user_handedness", "right")
+                        editor.putBoolean("flick_compact_mode", false)
+                    }
+                }
+                editor.apply()
+            }
+
             // Load the preferences from an XML resource
             addPreferencesFromResource(R.xml.ime_preferences)
 

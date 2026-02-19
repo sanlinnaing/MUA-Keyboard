@@ -58,18 +58,24 @@
         android:title="@string/proximity_correction_title" />
 
     <ListPreference
-        android:defaultValue="full"
-        android:entries="@array/flickHandModeNameArray"
-        android:entryValues="@array/flickHandModeValueArray"
-        android:key="flick_hand_mode"
-        android:summary="@string/flick_hand_mode_summ"
-        android:title="@string/flick_hand_mode_title" />
+        android:defaultValue="right"
+        android:entries="@array/userHandednessNameArray"
+        android:entryValues="@array/userHandednessValueArray"
+        android:key="user_handedness"
+        android:summary="@string/user_handedness_summ"
+        android:title="@string/user_handedness_title" />
+    <CheckBoxPreference
+        android:defaultValue="false"
+        android:key="flick_compact_mode"
+        android:summary="@string/flick_compact_mode_summ"
+        android:title="@string/flick_compact_mode_title" />
     <SeekBarPreference
         android:key="flick_compact_size"
         android:title="@string/flick_compact_size_title"
         android:summary="@string/flick_compact_size_summ"
         android:defaultValue="85"
-        android:max="100" />
+        android:max="100"
+        android:dependency="flick_compact_mode" />
 
     <ListPreference
         android:defaultValue="off"
