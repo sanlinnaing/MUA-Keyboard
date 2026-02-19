@@ -213,8 +213,15 @@ class SuggestionBarView @JvmOverloads constructor(
 
         val isLight = isLightTheme(KeyboardConfig.getCurrentTheme())
 
+        // Reverse order for right-handed so top candidate appears on the right side
+        val orderedSuggestions = if (KeyboardConfig.getUserHandedness() == "right") {
+            suggestions.reversed()
+        } else {
+            suggestions
+        }
+
         // Add chips with flexible spacers for centering
-        for ((index, suggestion) in suggestions.withIndex()) {
+        for ((index, suggestion) in orderedSuggestions.withIndex()) {
             if (index == 0) {
                 chipContainer.addView(createFlexSpacer())
             }
@@ -227,7 +234,13 @@ class SuggestionBarView @JvmOverloads constructor(
 
         scrollView.isFillViewport = true
         chipContainer.gravity = Gravity.CENTER_VERTICAL
-        scrollView.scrollTo(0, 0)
+
+        // Auto-scroll to dominant-hand side so top candidates are within thumb reach
+        if (KeyboardConfig.getUserHandedness() == "right") {
+            scrollView.post { scrollView.fullScroll(View.FOCUS_RIGHT) }
+        } else {
+            scrollView.scrollTo(0, 0)
+        }
     }
 
     /**
