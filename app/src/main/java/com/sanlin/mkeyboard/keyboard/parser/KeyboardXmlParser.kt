@@ -29,11 +29,11 @@ object KeyboardXmlParser {
     /**
      * Parse a keyboard XML resource into a Keyboard model.
      */
-    fun parse(context: Context, xmlLayoutResId: Int, keyboard: Keyboard) {
+    fun parse(context: Context, xmlLayoutResId: Int, keyboard: Keyboard, safeDisplayWidth: Int = 0) {
         val res = context.resources
         val parser = res.getXml(xmlLayoutResId)
         val displayMetrics = res.displayMetrics
-        val displayWidth = displayMetrics.widthPixels
+        val displayWidth = if (safeDisplayWidth > 0) safeDisplayWidth else displayMetrics.widthPixels
 
         var currentRow: Row? = null
         var currentX = 0

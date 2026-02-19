@@ -108,6 +108,19 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         updateClipboardText()
     }
 
+    /** Safely read split_keyboard pref, migrating old boolean value to string if needed. */
+    private fun getSplitKeyboardMode(prefs: SharedPreferences): String {
+        return try {
+            prefs.getString("split_keyboard", "off") ?: "off"
+        } catch (e: ClassCastException) {
+            // Old CheckBoxPreference stored a boolean — migrate to string
+            val wasEnabled = prefs.getBoolean("split_keyboard", false)
+            val mode = if (wasEnabled) "on" else "off"
+            prefs.edit().remove("split_keyboard").putString("split_keyboard", mode).apply()
+            mode
+        }
+    }
+
     // Preference listener for suggestion method/order changes
     private val preferenceChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { prefs, key ->
         when (key) {
@@ -166,6 +179,16 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                     flickKeyboard = FlickKeyboard(this@MuaKeyboardService)
                     flickKv?.setKeyboard(flickKeyboard!!)
                 }
+            }
+            "split_keyboard" -> {
+                KeyboardConfig.setSplitKeyboardMode(getSplitKeyboardMode(prefs))
+                onInitializeInterface()
+                setInputView(onCreateInputView())
+            }
+            "split_gap_size" -> {
+                KeyboardConfig.setSplitGapPercent(prefs.getInt("split_gap_size", 15))
+                onInitializeInterface()
+                setInputView(onCreateInputView())
             }
             "nav_bar_space" -> {
                 navBarSpaceMode = prefs.getString("nav_bar_space", "auto") ?: "auto"
@@ -320,9 +343,13 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         inputHandlers[FLICK_KEYBOARD_ID] = BamarInputHandler(wordSeparators) // Flick uses Bamar handler
     }
 
+    override fun onEvaluateFullscreenMode(): Boolean = false
+
     override fun onInitializeInterface() {
         val sharedPref = PreferenceManager.getDefaultSharedPreferences(this)
         KeyboardConfig.setDoubleTap(sharedPref.getBoolean("double_tap", false))
+        KeyboardConfig.setSplitKeyboardMode(getSplitKeyboardMode(sharedPref))
+        KeyboardConfig.setSplitGapPercent(sharedPref.getInt("split_gap_size", 15))
 
         enKeyboard = Keyboard(this, R.xml.en_qwerty)
         symKeyboard = Keyboard(this, R.xml.en_symbol)
@@ -353,6 +380,8 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
         KeyboardConfig.setHapticStrength(sharedPref.getInt("haptic_strength", 25))
         KeyboardConfig.setFlickHandMode(sharedPref.getString("flick_hand_mode", "full") ?: "full")
         KeyboardConfig.setFlickCompactSize(sharedPref.getInt("flick_compact_size", 85))
+        KeyboardConfig.setSplitKeyboardMode(getSplitKeyboardMode(sharedPref))
+        KeyboardConfig.setSplitGapPercent(sharedPref.getInt("split_gap_size", 15))
 
         kv = when (KeyboardConfig.getCurrentTheme()) {
             6 -> layoutInflater.inflate(R.layout.light_keyboard, null) as? MuaKeyboardView  // Light

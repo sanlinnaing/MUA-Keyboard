@@ -62,6 +62,12 @@
     <string name="flick_compact_size_title">Compact Keyboard Size</string>
     <string name="flick_compact_size_summ">Adjust width (50%–100%) of one-handed keyboard</string>
 
+    <!-- Split Keyboard -->
+    <string name="split_keyboard_title">Split Keyboard</string>
+    <string name="split_keyboard_summ">Off / Always On / Auto (landscape only)</string>
+    <string name="split_gap_size_title">Gap Width</string>
+    <string name="split_gap_size_summ">Adjust the gap size between keyboard halves (10–30%)</string>
+
     <!-- Navigation Bar -->
     <string name="nav_bar_space_title">Navigation Bar Space</string>
     <string name="nav_bar_space_summ">Add space below keyboard for navigation bar</string>

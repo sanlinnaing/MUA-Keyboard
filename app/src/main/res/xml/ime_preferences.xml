@@ -72,6 +72,21 @@
         android:max="100" />
 
     <ListPreference
+        android:defaultValue="off"
+        android:entries="@array/splitKeyboardModeNameArray"
+        android:entryValues="@array/splitKeyboardModeValueArray"
+        android:key="split_keyboard"
+        android:summary="@string/split_keyboard_summ"
+        android:title="@string/split_keyboard_title" />
+    <SeekBarPreference
+        android:key="split_gap_size"
+        android:title="@string/split_gap_size_title"
+        android:summary="@string/split_gap_size_summ"
+        android:defaultValue="15"
+        android:min="10"
+        android:max="30" />
+
+    <ListPreference
         android:defaultValue="auto"
         android:entries="@array/navBarSpaceNameArray"
         android:entryValues="@array/navBarSpaceValueArray"

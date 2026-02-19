@@ -74,6 +74,16 @@ open class ImePreferencesActivity : AppCompatActivity() {
             setInputMethodSettingsCategoryTitle(R.string.language_selection_title)
             setSubtypeEnablerTitle(R.string.select_language)
 
+            // Migrate old boolean split_keyboard pref to string (CheckBox → ListPreference)
+            val prefs = PreferenceManager.getDefaultSharedPreferences(requireContext())
+            if (prefs.all.containsKey("split_keyboard") && prefs.all["split_keyboard"] is Boolean) {
+                val wasEnabled = prefs.getBoolean("split_keyboard", false)
+                prefs.edit()
+                    .remove("split_keyboard")
+                    .putString("split_keyboard", if (wasEnabled) "on" else "off")
+                    .apply()
+            }
+
             // Load the preferences from an XML resource
             addPreferencesFromResource(R.xml.ime_preferences)
 

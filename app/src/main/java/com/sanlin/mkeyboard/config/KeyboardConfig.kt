@@ -16,6 +16,8 @@ object KeyboardConfig {
     private var hapticStrength: Int = 25  // 0-100 range (low = EFFECT_TICK)
     private var flickHandMode: String = "full"  // "full", "left", "right"
     private var flickCompactSize: Int = 85  // 50-100 percent of screen width
+    private var splitKeyboardMode: String = "off"  // "off", "on", "auto" (auto = landscape only)
+    private var splitGapPercent: Int = 15  // 10-30 percent of screen width
 
     @JvmStatic
     fun isSoundOn(): Boolean = soundOn
@@ -104,5 +106,34 @@ object KeyboardConfig {
     @JvmStatic
     fun setFlickCompactSize(value: Int) {
         flickCompactSize = value.coerceIn(50, 100)
+    }
+
+    @JvmStatic
+    fun getSplitKeyboardMode(): String = splitKeyboardMode
+
+    @JvmStatic
+    fun setSplitKeyboardMode(value: String) {
+        splitKeyboardMode = value
+    }
+
+    /**
+     * Check if split keyboard is effectively enabled for the given orientation.
+     * @param isLandscape true if current orientation is landscape
+     */
+    @JvmStatic
+    fun isSplitKeyboardEnabled(isLandscape: Boolean = false): Boolean {
+        return when (splitKeyboardMode) {
+            "on" -> true
+            "auto" -> isLandscape
+            else -> false
+        }
+    }
+
+    @JvmStatic
+    fun getSplitGapPercent(): Int = splitGapPercent
+
+    @JvmStatic
+    fun setSplitGapPercent(value: Int) {
+        splitGapPercent = value.coerceIn(10, 30)
     }
 }

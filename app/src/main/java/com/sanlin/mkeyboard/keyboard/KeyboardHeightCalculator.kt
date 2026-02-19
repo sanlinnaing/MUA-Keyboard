@@ -10,14 +10,18 @@ import android.content.Context
  */
 object KeyboardHeightCalculator {
 
+    // Maximum keyboard height in millimeters (general cap).
+    private const val MAX_HEIGHT_MM = 50f
+
+    // In landscape, keyboard should not exceed this fraction of screen height,
+    // so there's enough room for app content above.
+    private const val LANDSCAPE_MAX_SCREEN_FRACTION = 0.55f
+
     /**
-     * Calculate the standard keyboard height based on the flick keyboard formula.
-     * This height is used as the target for all keyboard types.
+     * Calculate the standard keyboard height.
      *
-     * Flick keyboard formula:
-     * - 5 columns with gaps: keyWidth = (totalWidth - 4 * gap) / 5
-     * - Key height is 80% of width: keyHeight = keyWidth * 0.80
-     * - 4 rows with 3 gaps: totalHeight = (keyHeight * 4) + (gap * 3)
+     * - Portrait: uses the width-based formula (works well), capped at MAX_HEIGHT_MM.
+     * - Landscape: additionally capped at 40% of screen height so app content stays visible.
      *
      * @param context Context to access display metrics
      * @return The standard keyboard height in pixels
@@ -25,7 +29,28 @@ object KeyboardHeightCalculator {
     @JvmStatic
     fun getStandardKeyboardHeight(context: Context): Int {
         val displayMetrics = context.resources.displayMetrics
-        return getKeyboardHeightForWidth(displayMetrics.widthPixels)
+        val screenWidth = displayMetrics.widthPixels
+        val screenHeight = displayMetrics.heightPixels
+        val isLandscape = screenWidth > screenHeight
+
+        val widthBased = getKeyboardHeightForWidth(screenWidth)
+
+        val ydpi = displayMetrics.ydpi
+        if (ydpi > 0f) {
+            // General mm cap
+            val maxHeightPx = (MAX_HEIGHT_MM / 25.4f * ydpi).toInt()
+            var height = minOf(widthBased, maxHeightPx)
+
+            // In landscape, also cap to fraction of screen height
+            if (isLandscape) {
+                val landscapeMax = (screenHeight * LANDSCAPE_MAX_SCREEN_FRACTION).toInt()
+                height = minOf(height, landscapeMax)
+            }
+
+            return height
+        }
+
+        return widthBased
     }
 
     /**

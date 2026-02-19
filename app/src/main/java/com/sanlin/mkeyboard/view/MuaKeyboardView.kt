@@ -160,6 +160,11 @@ open class MuaKeyboardView @JvmOverloads constructor(
 
         val keyboard = _keyboard ?: return
 
+        // Draw split divider before keys (background layer)
+        if (keyboard.splitGapPx > 0) {
+            drawSplitDivider(canvas, keyboard)
+        }
+
         // Draw each key
         for (key in keyboard.keys) {
             drawKey(canvas, key)
@@ -316,9 +321,13 @@ open class MuaKeyboardView @JvmOverloads constructor(
     private fun drawKeyLabel(canvas: Canvas, key: Key) {
         val label = key.label ?: return
 
+        // Scale font when keys are shrunk (e.g., landscape on phones)
+        val fontScale = _keyboard?.keyHeightScale ?: 1f
+
         // Set up paint for label
         paint.color = keyTextColor
-        paint.textSize = if (label.length > 1 && key.codes[0] < 0) labelTextSize else keyTextSize
+        val baseSize = if (label.length > 1 && key.codes[0] < 0) labelTextSize else keyTextSize
+        paint.textSize = baseSize * fontScale
         paint.textAlign = Paint.Align.CENTER
         paint.typeface = Typeface.DEFAULT
 
@@ -349,8 +358,9 @@ open class MuaKeyboardView @JvmOverloads constructor(
      * Positioned in top-right corner as superscript style.
      */
     private fun drawHintLabels(canvas: Canvas, keyboard: Keyboard) {
-        // Use slightly smaller text size for hints
-        paint.textSize = hintTextSize * 0.85f
+        // Use slightly smaller text size for hints, scaled with key height
+        val fontScale = keyboard.keyHeightScale
+        paint.textSize = hintTextSize * 0.85f * fontScale
         paint.color = hintTextColor
         paint.textAlign = Paint.Align.RIGHT
 
@@ -381,6 +391,65 @@ open class MuaKeyboardView @JvmOverloads constructor(
 
         // Reset text alignment for other drawing operations
         paint.textAlign = Paint.Align.CENTER
+    }
+
+    /**
+     * Draw the split divider in the gap between keyboard halves.
+     * Reads actual gap boundaries from each row's key positions.
+     */
+    /**
+     * Fill the split gap area with the keyboard background color so it blends seamlessly.
+     */
+    private fun drawSplitDivider(canvas: Canvas, keyboard: Keyboard) {
+        val gapPx = keyboard.splitGapPx
+        if (gapPx <= 0) return
+
+        val color = getDividerColorForTheme()
+        paint.style = Paint.Style.FILL
+        paint.color = color
+
+        for (row in keyboard.rows) {
+            if (row.keys.isEmpty()) continue
+            val rowTop = row.keys[0].y
+            val rowBottom = rowTop + row.keys[0].height
+
+            // Find the gap in this row (largest gap between consecutive keys)
+            var gapStart = 0
+            var gapEnd = 0
+            for (i in 0 until row.keys.size - 1) {
+                val rightEdge = row.keys[i].x + row.keys[i].width
+                val leftEdge = row.keys[i + 1].x
+                if (leftEdge - rightEdge > gapEnd - gapStart) {
+                    gapStart = rightEdge
+                    gapEnd = leftEdge
+                }
+            }
+            if (gapEnd <= gapStart) continue
+
+            canvas.drawRect(
+                gapStart.toFloat(), rowTop.toFloat(),
+                gapEnd.toFloat(), rowBottom.toFloat(),
+                paint
+            )
+        }
+    }
+
+    /**
+     * Get the divider color matching the current theme (same palette as FlickKeyboardView).
+     */
+    /**
+     * Get the keyboard background color for the current theme.
+     * Matches the android:background values in each theme's layout XML.
+     */
+    private fun getDividerColorForTheme(): Int {
+        return when (KeyboardConfig.getCurrentTheme()) {
+            6 -> 0xFFE8E8EE.toInt()  // Light
+            5 -> 0xFF2B2518.toInt()  // Golden Yellow
+            4 -> 0xFF1B1D2B.toInt()  // Blue Gray
+            3 -> 0xFF1B2B1B.toInt()  // Green
+            2 -> 0xFF000000.toInt()  // Dark
+            else -> 0xFF1B1B1B.toInt()  // Default
+        }
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
