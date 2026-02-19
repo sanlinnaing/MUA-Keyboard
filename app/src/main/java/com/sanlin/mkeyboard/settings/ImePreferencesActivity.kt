@@ -25,6 +25,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.fragment.app.Fragment
+import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceManager
 import com.android.inputmethodcommon.InputMethodSettingsFragment
@@ -107,6 +108,19 @@ open class ImePreferencesActivity : AppCompatActivity() {
 
             // Load the preferences from an XML resource
             addPreferencesFromResource(R.xml.ime_preferences)
+
+            // Enable gap slider only when split keyboard is "on" or "auto"
+            val splitPref = findPreference<ListPreference>("split_keyboard")
+            val gapPref = findPreference<Preference>("split_gap_size")
+            fun updateGapEnabled() {
+                val mode = splitPref?.value ?: "off"
+                gapPref?.isEnabled = mode != "off"
+            }
+            updateGapEnabled()
+            splitPref?.setOnPreferenceChangeListener { _, newValue ->
+                gapPref?.isEnabled = (newValue as? String) != "off"
+                true
+            }
 
             findPreference<Preference>("go_to_ime")?.setOnPreferenceClickListener {
                 startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
