@@ -1479,25 +1479,33 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                 handleSymByLocale()
             }
             Key.KEYCODE_MYANMAR_DELETE -> {
-                // Finish composing before delete
-                if (isComposing) {
-                    ic.finishComposingText()
-                }
-                if (KeyboardConfig.isPrimeBookOn()) {
-                    currentInputHandler.handleDelete(ic, DeleteHandler.isEndOfText(ic))
-                } else {
+                // If text is selected, just delete the selection directly
+                val selectedText = ic.getSelectedText(0)
+                if (!selectedText.isNullOrEmpty()) {
                     DeleteHandler.deleteChar(ic)
-                }
-                // Update composing region after delete
-                if (isComposing) {
-                    val textBefore = ic.getTextBeforeCursor(1, 0)?.toString() ?: ""
-                    if (textBefore.isEmpty() || !SyllableBreaker.containsMyanmarText(textBefore)) {
-                        resetComposing()
-                    } else {
-                        updateComposingRegion(ic)
+                    resetComposing()
+                    updateSuggestions()
+                } else {
+                    // Finish composing before delete
+                    if (isComposing) {
+                        ic.finishComposingText()
                     }
+                    if (KeyboardConfig.isPrimeBookOn()) {
+                        currentInputHandler.handleDelete(ic, DeleteHandler.isEndOfText(ic))
+                    } else {
+                        DeleteHandler.deleteChar(ic)
+                    }
+                    // Update composing region after delete
+                    if (isComposing) {
+                        val textBefore = ic.getTextBeforeCursor(1, 0)?.toString() ?: ""
+                        if (textBefore.isEmpty() || !SyllableBreaker.containsMyanmarText(textBefore)) {
+                            resetComposing()
+                        } else {
+                            updateComposingRegion(ic)
+                        }
+                    }
+                    updateSuggestions()
                 }
-                updateSuggestions()
             }
             Key.KEYCODE_DELETE -> {
                 handleDeleteKey(ic)
@@ -1751,6 +1759,16 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
 
     private fun handleDeleteKey(ic: InputConnection) {
         val localeId = getLocaleId()
+
+        // If text is selected, just delete the selection directly
+        val selectedText = ic.getSelectedText(0)
+        if (!selectedText.isNullOrEmpty()) {
+            DeleteHandler.deleteChar(ic)
+            if (localeId in 2..8) resetComposing()
+            syncAutoShiftState()
+            updateSuggestions()
+            return
+        }
 
         // For English, track deletions for skip-after-delete
         if (localeId == 1) {
@@ -2128,25 +2146,33 @@ class MuaKeyboardService : InputMethodService(), OnKeyboardActionListener, OnFli
                 inputMethodManager?.switchToNextInputMethod(getToken(), true)
             }
             Key.KEYCODE_DELETE -> {
-                // Finish composing before delete
-                if (isComposing) {
-                    ic.finishComposingText()
-                }
-                if (KeyboardConfig.isPrimeBookOn()) {
-                    currentInputHandler.handleDelete(ic, DeleteHandler.isEndOfText(ic))
-                } else {
+                // If text is selected, just delete the selection directly
+                val flickSelectedText = ic.getSelectedText(0)
+                if (!flickSelectedText.isNullOrEmpty()) {
                     DeleteHandler.deleteChar(ic)
-                }
-                // Update composing region after delete
-                if (isComposing) {
-                    val textBefore = ic.getTextBeforeCursor(1, 0)?.toString() ?: ""
-                    if (textBefore.isEmpty() || !SyllableBreaker.containsMyanmarText(textBefore)) {
-                        resetComposing()
-                    } else {
-                        updateComposingRegion(ic)
+                    resetComposing()
+                    updateSuggestions()
+                } else {
+                    // Finish composing before delete
+                    if (isComposing) {
+                        ic.finishComposingText()
                     }
+                    if (KeyboardConfig.isPrimeBookOn()) {
+                        currentInputHandler.handleDelete(ic, DeleteHandler.isEndOfText(ic))
+                    } else {
+                        DeleteHandler.deleteChar(ic)
+                    }
+                    // Update composing region after delete
+                    if (isComposing) {
+                        val textBefore = ic.getTextBeforeCursor(1, 0)?.toString() ?: ""
+                        if (textBefore.isEmpty() || !SyllableBreaker.containsMyanmarText(textBefore)) {
+                            resetComposing()
+                        } else {
+                            updateComposingRegion(ic)
+                        }
+                    }
+                    updateSuggestions()
                 }
-                updateSuggestions()
             }
             Key.KEYCODE_DONE -> {
                 if (isComposing) handleMyanmarWordBoundary()
