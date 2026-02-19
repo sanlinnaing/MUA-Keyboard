@@ -736,6 +736,21 @@ class FlickKeyboardView @JvmOverloads constructor(
             currentFlickKey = null
             sideKey.pressed = true
 
+            // Set up key repeat for repeatable keys (like delete)
+            if (sideKey.repeatable) {
+                repeatKey = sideKey
+                handler.sendEmptyMessageDelayed(MSG_REPEAT, longPressTimeout)
+            }
+
+            // Set up long press for space key
+            val sideCode = if (sideKey.codes.isNotEmpty()) sideKey.codes[0] else 0
+            if (sideCode == 32) { // Space
+                handler.sendMessageDelayed(
+                    handler.obtainMessage(MSG_LONGPRESS, sideKey),
+                    longPressTimeout
+                )
+            }
+
             // Notify listener
             actionListener?.onKeyDown(sideKey)
 
