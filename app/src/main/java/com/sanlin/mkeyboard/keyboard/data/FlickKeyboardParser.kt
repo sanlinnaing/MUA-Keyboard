@@ -78,7 +78,8 @@ object FlickKeyboardParser {
             // Parse center (required)
             val centerCodes = attrs.getString(R.styleable.FlickKey_centerCodes) ?: ""
             val centerLabel = attrs.getString(R.styleable.FlickKey_centerLabel) ?: ""
-            val center = parseFlickCharacter(centerCodes, centerLabel)
+            val centerIconResId = attrs.getResourceId(R.styleable.FlickKey_centerIcon, 0)
+            val center = parseFlickCharacter(centerCodes, centerLabel, centerIconResId)
                 ?: FlickCharacter(0, "")  // Fallback for empty key
 
             // Parse up (optional)
@@ -94,7 +95,8 @@ object FlickKeyboardParser {
             // Parse left (optional)
             val leftCodes = attrs.getString(R.styleable.FlickKey_leftCodes)
             val leftLabel = attrs.getString(R.styleable.FlickKey_leftLabel)
-            val left = parseFlickCharacter(leftCodes, leftLabel)
+            val leftIconResId = attrs.getResourceId(R.styleable.FlickKey_leftIcon, 0)
+            val left = parseFlickCharacter(leftCodes, leftLabel, leftIconResId)
 
             // Parse right (optional)
             val rightCodes = attrs.getString(R.styleable.FlickKey_rightCodes)
@@ -120,8 +122,12 @@ object FlickKeyboardParser {
      * @param label Display label for the character
      * @return FlickCharacter or null if input is invalid
      */
-    private fun parseFlickCharacter(codesStr: String?, label: String?): FlickCharacter? {
-        if (codesStr.isNullOrBlank() || label.isNullOrBlank()) {
+    private fun parseFlickCharacter(codesStr: String?, label: String?, iconResId: Int = 0): FlickCharacter? {
+        if (codesStr.isNullOrBlank()) {
+            return null
+        }
+        // Allow empty label if icon is provided
+        if (label.isNullOrBlank() && iconResId == 0) {
             return null
         }
 
@@ -136,8 +142,9 @@ object FlickKeyboardParser {
         // For multi-character sequences, label already contains the combined display
         return FlickCharacter(
             code = primaryCode,
-            label = label,
-            codes = if (codes.size > 1) codes else null
+            label = label ?: "",
+            codes = if (codes.size > 1) codes else null,
+            iconResId = iconResId
         )
     }
 

@@ -35,7 +35,7 @@
         <Key android:codes="4196,4155" android:keyLabel="ၤ" android:popupCharacters="ျ" android:keyEdgeFlags="left"/>
         <Key android:codes="4194,4158" android:keyLabel="ၢ" android:popupCharacters="ှ"/>
         <Key android:codes="4142,4141" android:keyLabel="ီ" android:popupCharacters="ိ"/>
-        <Key android:codes="4154,4192" android:keyLabel="်" android:popupCharacters="ၠ"/>
+        <Key android:codes="4154,4192" android:keyIcon="@drawable/sym_keyboard_asat" android:popupCharacters="ၠ"/>
         <Key android:codes="4139,4157" android:keyLabel="ါ" android:popupCharacters="ွ"/>
         <Key android:codes="4151,4150" android:keyLabel="့" android:popupCharacters="ံ"/>
         <Key android:codes="4146,4156" android:keyLabel="ဲ" android:popupCharacters="ြ"/>

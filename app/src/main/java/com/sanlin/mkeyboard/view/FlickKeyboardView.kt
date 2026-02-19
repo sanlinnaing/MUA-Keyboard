@@ -289,16 +289,20 @@ class FlickKeyboardView @JvmOverloads constructor(
         }
 
         // Skip drawing text for empty/placeholder keys
-        if (key.center.label.isEmpty()) {
+        if (key.center.label.isEmpty() && key.center.iconResId == 0) {
             return
         }
 
-        // Draw center character (large)
-        textPaint.color = keyTextColor
-        textPaint.textSize = centerTextSize
+        // Draw center character (large) or icon
         val centerX = key.x + key.width / 2f
-        val centerY = key.y + key.height / 2f + centerTextSize / 3f
-        canvas.drawText(key.center.label, centerX, centerY, textPaint)
+        val centerY = key.y + key.height / 2f
+        if (key.center.iconResId != 0) {
+            drawFlickIcon(canvas, key.center.iconResId, centerX, centerY, centerTextSize)
+        } else {
+            textPaint.color = keyTextColor
+            textPaint.textSize = centerTextSize
+            canvas.drawText(key.center.label, centerX, centerY + centerTextSize / 3f, textPaint)
+        }
 
         // Draw directional hints if enabled
         if (KeyboardConfig.isShowHintLabel()) {
@@ -459,14 +463,18 @@ class FlickKeyboardView @JvmOverloads constructor(
 
         // LEFT hint (closer to center)
         key.left?.let { char ->
-            textPaint.textAlign = Paint.Align.LEFT
-            canvas.drawText(
-                char.label,
-                key.x + horizontalPadding,
-                centerY + hintTextSize / 3f,
-                textPaint
-            )
-            textPaint.textAlign = Paint.Align.CENTER
+            if (char.iconResId != 0) {
+                drawFlickIcon(canvas, char.iconResId, key.x + horizontalPadding + hintTextSize / 2f, centerY, hintTextSize, hintTextColor)
+            } else {
+                textPaint.textAlign = Paint.Align.LEFT
+                canvas.drawText(
+                    char.label,
+                    key.x + horizontalPadding,
+                    centerY + hintTextSize / 3f,
+                    textPaint
+                )
+                textPaint.textAlign = Paint.Align.CENTER
+            }
         }
 
         // RIGHT hint (closer to center)
@@ -480,6 +488,19 @@ class FlickKeyboardView @JvmOverloads constructor(
             )
             textPaint.textAlign = Paint.Align.CENTER
         }
+    }
+
+    /**
+     * Draw a vector drawable icon centered at the given position.
+     */
+    private fun drawFlickIcon(canvas: Canvas, resId: Int, cx: Float, cy: Float, size: Float, tintColor: Int = keyTextColor) {
+        val drawable = androidx.core.content.ContextCompat.getDrawable(context, resId) ?: return
+        val iconSize = size.toInt()
+        val left = (cx - iconSize / 2f).toInt()
+        val top = (cy - iconSize / 2f).toInt()
+        drawable.setBounds(left, top, left + iconSize, top + iconSize)
+        drawable.setTint(tintColor)
+        drawable.draw(canvas)
     }
 
     /**

@@ -111,10 +111,10 @@
 
         <!-- Key 12: ်/ဥ/ဦ/္/ဩ -->
         <FlickKey
-            app:centerCodes="4154" app:centerLabel="်"
+            app:centerCodes="4154" app:centerLabel="်" app:centerIcon="@drawable/sym_keyboard_asat"
             app:upCodes="4133" app:upLabel="ဥ"
             app:downCodes="4134" app:downLabel="ဦ"
-            app:leftCodes="4153" app:leftLabel="္"
+            app:leftCodes="4153" app:leftLabel="္" app:leftIcon="@drawable/sym_keyboard_virama"
             app:rightCodes="4137" app:rightLabel="ဩ" />
     </Row>
 

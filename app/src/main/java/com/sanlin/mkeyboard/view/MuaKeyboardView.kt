@@ -312,6 +312,7 @@ open class MuaKeyboardView @JvmOverloads constructor(
         val iconY = key.y + (key.height - iconHeight) / 2
 
         icon.setBounds(iconX, iconY, iconX + iconWidth, iconY + iconHeight)
+        icon.setTint(keyTextColor)
         icon.draw(canvas)
     }
 
@@ -367,7 +368,7 @@ open class MuaKeyboardView @JvmOverloads constructor(
         val padding = 6 * resources.displayMetrics.density  // 6dp from right edge
 
         for (key in keyboard.keys) {
-            if (key.label != null) {
+            if (key.label != null || key.icon != null) {
                 // Handle emoji label special case
                 if (key.label == ";)") {
                     key.label = String(Character.toChars(key.codes[0]))

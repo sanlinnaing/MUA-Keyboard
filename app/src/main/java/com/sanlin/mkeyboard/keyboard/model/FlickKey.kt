@@ -81,7 +81,8 @@ data class FlickCharacter(
     val label: String,
     val shiftedCode: Int? = null,
     val shiftedLabel: String? = null,
-    val codes: IntArray? = null  // For multi-character sequences
+    val codes: IntArray? = null,  // For multi-character sequences
+    val iconResId: Int = 0  // Optional vector drawable resource ID (0 = no icon)
 ) {
     /**
      * Get the text to commit for this character.

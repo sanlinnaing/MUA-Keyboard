@@ -35,7 +35,7 @@
         <Key android:codes="4119" android:keyLabel="ဗ" android:keyEdgeFlags="left"/>
         <Key android:codes="4158" android:keyLabel="ှ"/>
         <Key android:codes="4142" android:keyLabel="ီ"/>
-        <Key android:codes="4153" android:keyLabel="္"/>
+        <Key android:codes="4153" android:keyIcon="@drawable/sym_keyboard_virama"/>
         <Key android:codes="4157" android:keyLabel="ွ"/>
         <Key android:codes="4150" android:keyLabel="ံ"/>
         <Key android:codes="4146" android:keyLabel="ဲ"/>

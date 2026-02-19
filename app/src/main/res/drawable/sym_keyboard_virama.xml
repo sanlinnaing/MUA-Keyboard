@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="#FFFFFF">
+    <!-- Dotted circle — 8 small dots arranged in a circle (r=5, center at 12,9) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="
+            M17,9 a0.9,0.9 0 1,1 -1.8,0 a0.9,0.9 0 1,1 1.8,0
+            M15.6,5.5 a0.9,0.9 0 1,1 -1.8,0 a0.9,0.9 0 1,1 1.8,0
+            M12.9,4 a0.9,0.9 0 1,1 -1.8,0 a0.9,0.9 0 1,1 1.8,0
+            M10.2,5.5 a0.9,0.9 0 1,1 -1.8,0 a0.9,0.9 0 1,1 1.8,0
+            M8.8,9 a0.9,0.9 0 1,1 -1.8,0 a0.9,0.9 0 1,1 1.8,0
+            M10.2,12.5 a0.9,0.9 0 1,1 -1.8,0 a0.9,0.9 0 1,1 1.8,0
+            M12.9,14 a0.9,0.9 0 1,1 -1.8,0 a0.9,0.9 0 1,1 1.8,0
+            M15.6,12.5 a0.9,0.9 0 1,1 -1.8,0 a0.9,0.9 0 1,1 1.8,0"/>
+    <!-- Virama cross mark (below dotted circle, with gap) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M11,18.5 L11,21 L13,21 L13,18.5 L15.5,18.5 L15.5,16.5 L13,16.5 L13,14 L11,14 L11,16.5 L8.5,16.5 L8.5,18.5z"/>
+</vector>
