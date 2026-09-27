@@ -519,12 +519,6 @@ open class Keyboard(
                     WindowInsets.Type.displayCutout()
                 )
                 return insets.left + insets.right
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                @Suppress("DEPRECATION")
-                val cutout = windowManager.defaultDisplay?.cutout
-                if (cutout != null) {
-                    return cutout.safeInsetLeft + cutout.safeInsetRight
-                }
             }
             return 0
         }

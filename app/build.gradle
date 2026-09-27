@@ -1,16 +1,19 @@
-apply plugin: 'com.android.application'
-apply plugin: 'org.jetbrains.kotlin.android'
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+plugins {
+    id 'com.android.application'
+}
 
 android {
-    namespace 'com.sanlin.mkeyboard'
-    compileSdk  36
+    namespace = 'com.sanlin.mkeyboard'
+    compileSdk = 36
 
     defaultConfig {
-        applicationId "com.sanlin.mkeyboard"
-        minSdkVersion 26
-        targetSdkVersion 36
-        versionCode 14
-        versionName '3.3 Beta1'
+        applicationId = "com.sanlin.mkeyboard"
+        minSdk = 26
+        targetSdk = 36
+        versionCode = 14
+        versionName = '3.3 Beta1'
 
         // NDK configuration for native trie library
         externalNativeBuild {
@@ -26,20 +29,21 @@ android {
     // CMake build configuration
     externalNativeBuild {
         cmake {
-            path "src/main/cpp/CMakeLists.txt"
-            version "3.22.1"
+            path = "src/main/cpp/CMakeLists.txt"
+            version = "3.22.1"
         }
     }
 
     buildTypes {
         release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.txt'
+            minifyEnabled = false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.txt'
         }
     }
 
-    kotlinOptions {
-        jvmTarget = '17'
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 }
 
@@ -60,5 +64,11 @@ dependencies {
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = JvmTarget.JVM_17
     }
 }
